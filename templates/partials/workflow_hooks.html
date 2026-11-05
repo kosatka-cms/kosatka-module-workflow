@@ -1,0 +1,55 @@
+{{/* node_workflow_workflow - a workflow's type's item in its form, in
+     place of its publishing state and the save button (.nodeWorkflow -
+     formData): its state, a comment for the transition, a button per
+     transition the user may make, Save keeping the state. A hidden first
+     button makes Enter save without a transition. The item locked by
+     another: its state only (workflow.js makes the form read-only); by the
+     user: the card keeps the lock while they are active (workflow.js). */}}
+{{define "node_workflow_workflow"}}{{with .nodeWorkflow}}{{attach "workflow"}}
+{{$taken := and .Lock (not .Lock.Mine)}}
+<div class="node-edit-card node-edit-save workflow-card"{{with .Lock}}{{if .Mine}} data-workflow-lock="/workflow/lock/{{.Nid}}" data-workflow-lock-minutes="{{.Minutes}}" data-workflow-lock-lost="{{t "Now @name is editing this item: your changes won't be saved."}}"{{end}}{{end}}>
+    {{if $taken}}
+    <div class="node-edit-state">
+        <span class="workflow-state" style="--workflow-color: {{.State.Hex}}"><span class="workflow-dot" aria-hidden="true"></span>{{.State.Label}}</span>
+    </div>
+    <button type="submit" class="btn btn-outline-secondary" disabled>{{t "Save"}}</button>
+    {{else}}
+    <button type="submit" hidden tabindex="-1" aria-hidden="true"></button>
+    <div class="node-edit-state">
+        <span class="workflow-state" style="--workflow-color: {{.State.Hex}}"><span class="workflow-dot" aria-hidden="true"></span>{{.State.Label}}</span>
+        {{if not $.isCreateMode}}<a href="{{$.dc.Node.URL}}">{{t "Open"}} ↗</a>{{end}}
+    </div>
+    {{if .Transitions}}
+    <div class="form-group">
+        <label for="workflow-comment" class="form-label small fw-semibold">{{t "Comment"}}</label>
+        <textarea id="workflow-comment" name="workflow_comment" class="form-control form-control-sm" rows="3" placeholder="{{t "What changed - for whoever is next"}}"></textarea>
+    </div>
+    {{end}}
+    <div class="node-edit-buttons workflow-buttons">
+        {{range $i, $t := .Transitions}}<button type="submit" name="workflow_transition" value="{{$t.ID}}" class="btn {{if eq $i 0}}btn-primary{{else}}btn-outline-primary{{end}}">{{$t.Label}}</button>{{end}}
+        <button type="submit" class="btn btn-outline-secondary">{{if $.isCreateMode}}{{t "Create"}}{{else}}{{t "Save"}}{{end}}</button>
+    </div>
+    <p class="form-text text-muted mb-0">{{t "Save keeps the state; a transition changes it."}}</p>
+    {{end}}
+</div>
+{{end}}{{end}}
+
+{{/* node_form_top_workflow - over the form: who edits the item now (its
+     form read-only for the user, Take over for who may); the last
+     transition's comment, when it brought the item to its state (returned
+     to the author with what to fix, say). */}}
+{{define "node_form_top_workflow"}}{{with .nodeWorkflow}}{{with .Lock}}{{if not .Mine}}
+<div class="alert workflow-lock" role="alert" data-workflow-locked>
+    <svg class="workflow-lock-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+    <div class="workflow-lock-text">
+        <strong>{{t "@name is editing it - since @time" "@name" .Who "@time" (date .Since "datetime")}}</strong>
+        <span>{{t "The form is read-only so that edits don't overwrite each other. The lock is released when the item is saved or its form closed, by itself - after @count minutes without activity." "@count" .Minutes}}</span>
+    </div>
+    {{if .MayTake}}<form method="post" action="/workflow/lock/{{.Nid}}/take"><button type="submit" class="btn btn-outline-primary text-nowrap" data-workflow-take>{{t "Take over editing"}}</button></form>{{end}}
+</div>
+{{end}}{{end}}{{with .Note}}
+<div class="alert alert-warning workflow-note" role="note">
+    <strong>{{.State}}{{with .Who}} - {{.}}{{end}}, {{date .At "datetime"}}</strong>
+    <div>{{.Comment}}</div>
+</div>
+{{end}}{{end}}{{end}}

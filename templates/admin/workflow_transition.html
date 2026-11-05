@@ -1,0 +1,31 @@
+{{/* admin/workflow_transition.html - a transition of an item from the
+     queue (Controller.TransitionPage): the item, its state and the
+     transition's, a comment for it (required or optional). */}}
+{{template "layout.html" .}}
+
+{{define "page_body"}}{{template "content" .}}{{end}}
+
+{{define "content"}}
+{{if eq .error "comment"}}<div class="alert alert-danger" role="alert">{{t "Write a comment for \"@transition\"." "@transition" .transition.Label}}</div>{{end}}
+<form method="post" action="/admin/content/workflow/{{.node.ID}}/{{.transition.ID}}" class="admin-settings">
+    <div class="admin-settings-card">
+        <div class="admin-setting">
+            <div class="admin-setting-text"><span class="admin-setting-label">{{t "Content"}}</span></div>
+            <div class="admin-setting-control"><a href="{{.node.URL}}">{{.node.Title}}</a> · {{.from.Label}}</div>
+        </div>
+        {{if ne .transition.Comment "none"}}
+        <div class="admin-setting admin-setting--stacked">
+            <div class="admin-setting-text">
+                <label for="wf-comment" class="admin-setting-label">{{t "Comment"}}{{if eq .transition.Comment "required"}} <span class="required">*</span>{{end}}</label>
+                <span class="admin-setting-help">{{t "The author sees it over the content's form."}}</span>
+            </div>
+            <div class="admin-setting-control"><textarea id="wf-comment" name="comment" class="form-control" rows="4"{{if eq .transition.Comment "required"}} required{{end}}></textarea></div>
+        </div>
+        {{end}}
+    </div>
+    <div class="admin-settings-actions">
+        <button type="submit" class="btn btn-primary">{{.transition.Label}}</button>
+        <a href="/admin/content/workflow?state={{.from.Name}}" class="btn btn-outline-secondary">{{t "Cancel"}}</a>
+    </div>
+</form>
+{{end}}

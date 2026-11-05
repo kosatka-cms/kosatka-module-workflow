@@ -1,0 +1,111 @@
+{{/* admin/workflow_settings.html - the editorial workflow
+     (Controller.Settings): its states (a row each, the last one blank -
+     a new one), its transitions (so), the content types following it, the
+     editing lock; one form, Save at the top and the bottom. */}}
+{{template "layout.html" .}}
+
+{{define "page_meta"}}
+<span class="admin-page-meta">{{t "The states of content and who moves it from one to another. Whether an item is on the site depends on its state."}}</span>
+{{end}}
+
+{{define "page_actions"}}
+<button type="submit" form="workflow-settings" class="btn btn-primary">{{t "Save"}}</button>
+{{end}}
+
+{{define "page_body"}}{{template "content" .}}{{end}}
+
+{{define "content"}}{{attach "workflow"}}
+{{template "admin_alerts" (dict "Ctx" . "Done" (dict "saved" (t "Saved.")) "Errors" (dict
+    "state" (t "A state needs a name and a machine name: lower-case Latin letters, digits and _, starting with a letter.")
+    "state-duplicate" (t "Two states have the same machine name.")
+    "states" (t "The workflow needs a state at least.")
+    "transition" (t "A transition needs a state it goes to and one it goes from (another).")) "Fallback" (t "Error while saving."))}}
+<form method="post" action="/admin/config/workflow" id="workflow-settings" class="admin-settings">
+    <section class="admin-settings-group" aria-labelledby="wf-states">
+        <h2 class="admin-settings-title" id="wf-states">{{t "States"}}</h2>
+        <div class="admin-table-card">
+            <div class="table-responsive">
+                <table class="table admin-table align-middle">
+                    <thead><tr><th>{{t "Name"}}</th><th>{{t "Machine name"}}</th><th>{{t "On the site"}}</th><th>{{t "Colour"}}</th><th>{{t "Initial"}}</th><th><span class="visually-hidden">{{t "Delete"}}</span></th></tr></thead>
+                    <tbody>
+                    {{$palette := .palette}}
+                    {{range $i, $s := .states}}
+                    <tr>
+                        <td><input type="text" name="state_label_{{$i}}" class="form-control" value="{{$s.Label}}" aria-label="{{t "Name"}}"{{if not $s.Name}} placeholder="{{t "New state"}}"{{end}}></td>
+                        <td>{{if $s.ID}}<code>{{$s.Name}}</code><input type="hidden" name="state_name_{{$i}}" value="{{$s.Name}}">{{else}}<input type="text" name="state_name_{{$i}}" class="form-control" pattern="[a-z][a-z0-9_]*" maxlength="64" aria-label="{{t "Machine name"}}">{{end}}</td>
+                        <td><label class="workflow-check"><input type="checkbox" class="form-check-input" id="state-published-{{$i}}" name="state_published_{{$i}}" value="1"{{if $s.Published}} checked{{end}}> {{t "visible"}}</label></td>
+                        <td><select name="state_color_{{$i}}" class="form-select" aria-label="{{t "Colour"}}">{{range $palette}}<option value="{{.Name}}"{{if eq .Name $s.Color}} selected{{end}}>{{t .Label}}</option>{{end}}</select></td>
+                        <td><input type="radio" class="form-check-input" name="state_initial" value="{{$i}}" aria-label="{{t "Initial"}}"{{if $s.Initial}} checked{{end}}></td>
+                        <td>{{if $s.ID}}<label class="workflow-check text-danger"><input type="checkbox" class="form-check-input" id="state-delete-{{$i}}" name="state_delete_{{$i}}" value="1"> {{t "delete"}}</label>{{end}}</td>
+                    </tr>
+                    {{end}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <input type="hidden" name="states_count" value="{{len .states}}">
+        <p class="admin-setting-help mt-2">{{t "The initial state is a new item's. An item whose state is deleted counts as in the initial one (or the first visible, if it is published)."}}</p>
+    </section>
+
+    <section class="admin-settings-group mt-4" aria-labelledby="wf-transitions">
+        <h2 class="admin-settings-title" id="wf-transitions">{{t "Transitions"}}</h2>
+        <div class="admin-table-card">
+            <div class="table-responsive">
+                <table class="table admin-table align-top">
+                    <thead><tr><th>{{t "From"}}</th><th>{{t "To"}}</th><th>{{t "Button"}}</th><th>{{t "Who may"}}</th><th>{{t "Comment"}}</th><th><span class="visually-hidden">{{t "Delete"}}</span></th></tr></thead>
+                    <tbody>
+                    {{$states := .states}}{{$roles := .roles}}{{$comments := .comments}}
+                    {{range $i, $tr := .transitions}}
+                    <tr>
+                        <td>{{range $states}}{{if .Name}}<label class="workflow-check"><input type="checkbox" class="form-check-input" id="t-from-{{$i}}-{{.Name}}" name="t_from_{{$i}}" value="{{.Name}}"{{if stringContains $tr.From .Name}} checked{{end}}> {{.Label}}</label>{{end}}{{end}}</td>
+                        <td><select name="t_to_{{$i}}" class="form-select" aria-label="{{t "To"}}">{{range $states}}{{if .Name}}<option value="{{.Name}}"{{if eq .Name $tr.To}} selected{{end}}>{{.Label}}</option>{{end}}{{end}}</select></td>
+                        <td><input type="text" name="t_label_{{$i}}" class="form-control" value="{{$tr.Label}}" aria-label="{{t "Button"}}"{{if not $tr.ID}} placeholder="{{t "New transition"}}"{{end}}></td>
+                        <td>{{range $roles}}<label class="workflow-check"><input type="checkbox" class="form-check-input" id="t-role-{{$i}}-{{.Value}}" name="t_roles_{{$i}}" value="{{.Value}}"{{if stringContains $tr.Roles .Value}} checked{{end}}> {{.Label}}</label>{{end}}</td>
+                        <td><select name="t_comment_{{$i}}" class="form-select" aria-label="{{t "Comment"}}">{{range $comments}}<option value="{{.Value}}"{{if eq .Value $tr.Comment}} selected{{end}}>{{t .Label}}</option>{{end}}</select></td>
+                        <td>{{if $tr.ID}}<label class="workflow-check text-danger"><input type="checkbox" class="form-check-input" id="t-delete-{{$i}}" name="t_delete_{{$i}}" value="1"> {{t "delete"}}</label>{{end}}</td>
+                    </tr>
+                    {{end}}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <input type="hidden" name="transitions_count" value="{{len .transitions}}">
+        <p class="admin-setting-help mt-2">{{t "Who has full access may make every transition. A new state shows among a transition's states after saving."}}</p>
+    </section>
+
+    <section class="admin-settings-group mt-4" aria-labelledby="wf-types">
+        <h2 class="admin-settings-title" id="wf-types">{{t "Content types"}}</h2>
+        <div class="admin-settings-card">
+            <div class="admin-setting">
+                <div class="admin-setting-text">
+                    <span class="admin-setting-label">{{t "Follow the workflow"}}</span>
+                    <span class="admin-setting-help">{{t "Their items are published by its transitions. The others - as before: their type's publishing. A type's items get a state when it joins: the published - the first visible, the rest - the initial."}}</span>
+                </div>
+                <div class="admin-setting-control">
+                    {{range .types}}<label class="workflow-check"><input type="checkbox" class="form-check-input" id="type-{{.Value}}" name="types" value="{{.Value}}"{{if .On}} checked{{end}}> {{.Label}}</label>{{end}}
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="admin-settings-group mt-4" aria-labelledby="wf-editing">
+        <h2 class="admin-settings-title" id="wf-editing">{{t "Editing"}}</h2>
+        <div class="admin-settings-card">
+            <div class="admin-setting">
+                <div class="admin-setting-text">
+                    <span class="admin-setting-label">{{t "Editing lock"}}</span>
+                    <span class="admin-setting-help">{{t "While an item is open in its form, the others see who edits it and can't save it. The lock is released when the item is saved or its form closed."}}</span>
+                </div>
+                <div class="admin-setting-control workflow-lock-setting">
+                    <label class="workflow-check"><input type="checkbox" class="form-check-input" id="workflow-locking" name="locking" value="1"{{if .locking}} checked{{end}}> {{t "On"}}</label>
+                    <label for="workflow-lock-minutes" class="text-muted">{{t "released by itself after"}}</label>
+                    <select id="workflow-lock-minutes" name="lock_minutes" class="form-select w-auto">{{range .lockMinutes}}<option value="{{.Minutes}}"{{if .On}} selected{{end}}>{{t "@count minutes without activity" "@count" .Minutes}}</option>{{end}}</select>
+                </div>
+            </div>
+        </div>
+    </section>
+    <div class="admin-settings-actions">
+        <button type="submit" class="btn btn-primary">{{t "Save"}}</button>
+    </div>
+</form>
+{{end}}

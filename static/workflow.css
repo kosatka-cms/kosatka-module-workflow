@@ -1,0 +1,85 @@
+/* The editorial workflow: a state's mark (its colour - --workflow-color
+   or the dot's own background), the transitions' buttons stacked in the
+   form's side card. */
+.workflow-state {
+    display: inline-flex;
+    align-items: center;
+    gap: .4rem;
+    padding: .2rem .65rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--workflow-color, #8a959c) 14%, transparent);
+    font-size: .8125rem;
+    font-weight: 600;
+}
+
+.workflow-state .workflow-dot {
+    background: var(--workflow-color, #8a959c);
+}
+
+.workflow-dot {
+    display: inline-block;
+    width: .5rem;
+    height: .5rem;
+    border-radius: 50%;
+}
+
+.workflow-card .workflow-buttons {
+    flex-direction: column;
+    align-items: stretch;
+}
+
+/* A checkbox and its label in the settings' tables. */
+.workflow-check {
+    display: flex;
+    align-items: center;
+    gap: .4rem;
+    margin: .15rem 0;
+    white-space: nowrap;
+}
+
+.workflow-check .form-check-input {
+    margin: 0;
+}
+
+/* The setting of the editing lock: on, after how long. */
+.workflow-lock-setting {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .5rem .75rem;
+}
+
+/* Who edits the item now, over its read-only form. */
+.workflow-lock {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: #e9f1fb;
+    border: 1px solid #b9cfe9;
+    color: #17171c;
+}
+
+.workflow-lock-icon {
+    flex: none;
+    color: #2f6fb2;
+}
+
+.workflow-lock-text {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: .125rem;
+}
+
+.workflow-lock form {
+    margin: 0;
+}
+
+.workflow-edited-by {
+    color: #8a5a00;
+}
+
+/* An item's form locked by another editor (workflow.js). */
+.node-form.workflow-readonly {
+    opacity: .6;
+}
