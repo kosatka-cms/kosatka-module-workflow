@@ -35,9 +35,8 @@
 {{end}}{{end}}
 
 {{/* node_form_top_workflow - over the form: who edits the item now (its
-     form read-only for the user, Take over for who may); the last
-     transition's comment, when it brought the item to its state (returned
-     to the author with what to fix, say). */}}
+     form read-only for the user, Take over for who may); its editorial
+     history, expanded while the item isn't on the site. */}}
 {{define "node_form_top_workflow"}}{{with .nodeWorkflow}}{{with .Lock}}{{if not .Mine}}
 <div class="alert workflow-lock" role="alert" data-workflow-locked>
     <svg class="workflow-lock-icon" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
@@ -47,9 +46,46 @@
     </div>
     {{if .MayTake}}<form method="post" action="/workflow/lock/{{.Nid}}/take"><button type="submit" class="btn btn-outline-primary text-nowrap" data-workflow-take>{{t "Take over editing"}}</button></form>{{end}}
 </div>
-{{end}}{{end}}{{with .Note}}
-<div class="alert alert-warning workflow-note" role="note">
-    <strong>{{.State}}{{with .Who}} - {{.}}{{end}}, {{date .At "datetime"}}</strong>
-    <div>{{.Comment}}</div>
-</div>
-{{end}}{{end}}{{end}}
+{{end}}{{end}}{{with .History}}{{if .Entries}}{{attach "workflow"}}
+<details class="workflow-history-card"{{if .Open}} open{{end}}>
+    <summary>{{t "Editorial history · @count" "@count" (len .Entries)}}</summary>
+    {{template "workflow_history" .Entries}}
+</details>
+{{end}}{{end}}{{end}}{{end}}
+
+{{/* node_notice_workflow - over an item on its page, for who may edit it
+     while it isn't on the site (nodePage): its state, its latest
+     transition, the whole history to open. */}}
+{{define "node_notice_workflow"}}{{with .moduleNode.workflow}}{{attach "workflow"}}
+<section class="workflow-notice" aria-labelledby="workflow-notice-title">
+    <div class="workflow-notice-head">
+        <span class="workflow-state" style="--workflow-color: {{.State.Hex}}"><span class="workflow-dot" aria-hidden="true"></span>{{.State.Label}}</span>
+        <strong id="workflow-notice-title">{{t "Not on the site: only its author and editors see it"}}</strong>
+        <a href="/node/{{$.item.Node.ID}}/edit" class="workflow-notice-edit">{{t "Edit"}}</a>
+    </div>
+    {{if .Entries}}
+    {{template "workflow_history" (slice .Entries 0 1)}}
+    {{if gt (len .Entries) 1}}
+    <details class="workflow-notice-more">
+        <summary>{{t "Editorial history · @count" "@count" (len .Entries)}}</summary>
+        {{template "workflow_history" .Entries}}
+    </details>
+    {{end}}
+    {{end}}
+</section>
+{{end}}{{end}}
+
+{{/* workflow_history - transitions made (historyNote), newest first:
+     who (the author marked), the button, from which state to which,
+     when, the comment. */}}
+{{define "workflow_history"}}<ol class="workflow-history">
+    {{range .}}<li class="workflow-history-entry">
+        <div class="workflow-history-meta">
+            <strong>{{if .Who}}{{.Who}}{{else}}{{t "The site"}}{{end}}</strong>{{if .ByAuthor}} <span class="workflow-history-role">{{t "author"}}</span>{{end}}
+            {{with .Action}}<span>{{.}}</span>{{end}}
+            <span class="workflow-history-states">{{.From.Label}} → <span class="workflow-state" style="--workflow-color: {{.To.Hex}}">{{.To.Label}}</span></span>
+            <time datetime="{{.At.Format "2006-01-02T15:04:05Z07:00"}}" class="workflow-history-at">{{date .At "datetime"}}</time>
+        </div>
+        {{with .Comment}}<p class="workflow-history-comment">{{.}}</p>{{end}}
+    </li>{{end}}
+</ol>{{end}}

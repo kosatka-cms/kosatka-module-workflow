@@ -77,16 +77,68 @@ func TestFormLock(t *testing.T) {
 	}
 }
 
-// TestFormNote - over the form, the transition's comment that brought
-// the item to its state.
-func TestFormNote(t *testing.T) {
+// historySample - two transitions, the newest first: the editor
+// returning the item to its author, the author sending it to review.
+func historySample(open bool) editorialHistory {
+	review := State{Name: "review", Label: "In review", Color: "amber"}
+	draft := State{Name: "draft", Label: "Draft"}
+	return editorialHistory{State: draft, Open: open, Entries: []historyNote{
+		{Who: "oleg", Action: "Return to the author", From: review, To: draft, At: time.Date(2026, 11, 11, 16, 5, 0, 0, time.UTC), Comment: "Add the <source>."},
+		{Who: "anna", ByAuthor: true, Action: "Send to review", From: draft, To: review, At: time.Date(2026, 11, 11, 15, 20, 0, 0, time.UTC)},
+	}}
+}
+
+// TestFormHistory - over the form, the item's whole history, the newest
+// first: who (the author marked), the button, the states, the comment
+// (escaped); open while the item isn't on the site, closed after.
+func TestFormHistory(t *testing.T) {
 	testkit.UseEngineRoot(t)
 	testkit.WithModules(t, map[string]bool{manifest.Name: true})
-	at := time.Date(2026, 10, 29, 11, 40, 0, 0, time.UTC)
-	data := map[string]any{"nodeWorkflow": formData{Note: &transitionNote{Who: "irina", At: at, State: "Draft", Comment: "Add the <address>."}}}
-	out := testkit.RenderNamed(t, "node_form_top_workflow", data, "partials/workflow_hooks.html")
-	if !strings.Contains(out, "<strong>Draft - irina,") || !strings.Contains(out, "Add the &lt;address&gt;.") {
-		t.Errorf("the note: %s", out)
+	h := historySample(true)
+	out := testkit.RenderNamed(t, "node_form_top_workflow", map[string]any{"nodeWorkflow": formData{History: &h}}, "partials/workflow_hooks.html")
+	for _, want := range []string{
+		`<details class="workflow-history-card" open>`, `Editorial history · 2`,
+		`<strong>oleg</strong>`, `<span>Return to the author</span>`, `Add the &lt;source&gt;.`,
+		`<strong>anna</strong> <span class="workflow-history-role">author</span>`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("no %s in %s", want, out)
+		}
+	}
+	if strings.Index(out, "oleg") > strings.Index(out, "anna") {
+		t.Errorf("not the newest first: %s", out)
+	}
+	h = historySample(false)
+	if out := testkit.RenderNamed(t, "node_form_top_workflow", map[string]any{"nodeWorkflow": formData{History: &h}}, "partials/workflow_hooks.html"); !strings.Contains(out, `<details class="workflow-history-card">`) {
+		t.Errorf("a published item's history open: %s", out)
+	}
+	if out := testkit.RenderNamed(t, "node_form_top_workflow", map[string]any{"nodeWorkflow": formData{History: &editorialHistory{}}}, "partials/workflow_hooks.html"); strings.Contains(out, "workflow-history") {
+		t.Errorf("an empty history shown: %s", out)
+	}
+}
+
+// TestNodeNotice - over the item on its page (the page's data with the
+// module's part): its state, the latest transition, the whole history
+// to open, a link to its form; nothing without the module's part.
+func TestNodeNotice(t *testing.T) {
+	testkit.UseEngineRoot(t)
+	testkit.WithModules(t, map[string]bool{manifest.Name: true})
+	data := map[string]any{"item": map[string]any{"Node": modulekit.Node{ID: 7}}, "moduleNode": map[string]any{manifest.Name: historySample(true)}}
+	out := testkit.RenderNamed(t, "node_notice_workflow", data, "partials/workflow_hooks.html")
+	for _, want := range []string{
+		`class="workflow-notice"`, `>Draft</span>`, `Not on the site: only its author and editors see it`,
+		`<a href="/node/7/edit" class="workflow-notice-edit">Edit</a>`, `Add the &lt;source&gt;.`,
+		`<details class="workflow-notice-more">`, `Editorial history · 2`,
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("no %s in %s", want, out)
+		}
+	}
+	if strings.Count(out, "<strong>oleg</strong>") != 2 || strings.Count(out, "<strong>anna</strong>") != 1 {
+		t.Errorf("the latest above, all in the history: %s", out)
+	}
+	if out := testkit.RenderNamed(t, "node_notice_workflow", map[string]any{"moduleNode": map[string]any{}}, "partials/workflow_hooks.html"); strings.TrimSpace(out) != "" {
+		t.Errorf("shown without the module's part: %s", out)
 	}
 }
 
