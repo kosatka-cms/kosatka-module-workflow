@@ -1,8 +1,10 @@
 {{/* node_workflow_workflow - a workflow's type's item in its form, in
      place of its publishing state and the save button (.nodeWorkflow -
      formData): its state, a comment for the transition, a button per
-     transition the user may make, Save keeping the state. A hidden first
-     button makes Enter save without a transition. The item locked by
+     transition the user may make (the first the main one), Save keeping
+     the state - in the initial state, the hint that nobody hears of the
+     item until the first transition. A hidden first button makes Enter
+     save without a transition. The item locked by
      another: its state only (workflow.js makes the form read-only); by the
      user: the card keeps the lock while they are active (workflow.js). */}}
 {{define "node_workflow_workflow"}}{{with .nodeWorkflow}}{{attach "workflow"}}
@@ -27,9 +29,10 @@
     {{end}}
     <div class="node-edit-buttons workflow-buttons">
         {{range $i, $t := .Transitions}}<button type="submit" name="workflow_transition" value="{{$t.ID}}" class="btn {{if eq $i 0}}btn-primary{{else}}btn-outline-primary{{end}}">{{$t.Label}}</button>{{end}}
-        <button type="submit" class="btn btn-outline-secondary">{{if $.isCreateMode}}{{t "Create"}}{{else}}{{t "Save"}}{{end}}</button>
+        <button type="submit" class="btn btn-success">{{t "Save"}}</button>
     </div>
-    <p class="form-text text-muted mb-0">{{t "Save keeps the state; a transition changes it."}}</p>
+    {{if and .State.Initial .Transitions}}<p class="form-text text-muted mb-0">{{t "\"Save\" keeps it in \"@state\": nobody hears of it until you press \"@transition\"." "@state" .State.Label "@transition" (index .Transitions 0).Label}}</p>
+    {{else}}<p class="form-text text-muted mb-0">{{t "Save keeps the state; a transition changes it."}}</p>{{end}}
     {{end}}
 </div>
 {{end}}{{end}}

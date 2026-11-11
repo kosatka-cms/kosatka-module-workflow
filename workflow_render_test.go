@@ -14,13 +14,15 @@ import (
 )
 
 // TestFormCard - the form's card: the state with its colour, a button per
-// transition (the first primary), Save keeping the state after a hidden
-// default; without transitions, no comment.
+// transition (the first the main one), Save keeping the state after a
+// hidden default - for a new item too; in the initial state the hint
+// that nobody hears of it until the first transition; without
+// transitions, no comment.
 func TestFormCard(t *testing.T) {
 	testkit.UseEngineRoot(t)
 	testkit.WithModules(t, map[string]bool{manifest.Name: true})
 	data := map[string]any{"isCreateMode": true, "nodeWorkflow": formData{
-		State:       State{Name: "draft", Label: "Draft", Color: "gray"},
+		State:       State{Name: "draft", Label: "Draft", Color: "gray", Initial: true},
 		Transitions: []Transition{{ID: 7, Label: "Send to review"}, {ID: 8, Label: "Publish"}},
 	}}
 	out := testkit.RenderNamed(t, "node_workflow_workflow", data, "partials/workflow_hooks.html")
@@ -29,12 +31,32 @@ func TestFormCard(t *testing.T) {
 		`style="--workflow-color: #8a959c"`, `Draft</span>`,
 		`name="workflow_comment"`,
 		`<button type="submit" name="workflow_transition" value="7" class="btn btn-primary">Send to review</button>`,
-		`value="8" class="btn btn-outline-primary">Publish</button>`, `class="btn btn-outline-secondary">Create</button>`,
+		`value="8" class="btn btn-outline-primary">Publish</button>`,
+		`<button type="submit" class="btn btn-success">Save</button>`,
+		`"Save" keeps it in "Draft": nobody hears of it until you press "Send to review".`,
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("no %s in %s", want, out)
 		}
 	}
+	if strings.Contains(out, "Create") || strings.Contains(out, "a transition changes it") {
+		t.Errorf("a new item: %s", out)
+	}
+
+	// The settings' labels in the hint are escaped.
+	data["nodeWorkflow"] = formData{State: State{Name: "draft", Label: "<b>Draft</b>", Initial: true}, Transitions: []Transition{{ID: 7, Label: "Send <i>on</i>"}}}
+	if out := testkit.RenderNamed(t, "node_workflow_workflow", data, "partials/workflow_hooks.html"); !strings.Contains(out, `in "&lt;b&gt;Draft&lt;/b&gt;": nobody hears of it until you press "Send &lt;i&gt;on&lt;/i&gt;".`) {
+		t.Errorf("the hint's labels not escaped: %s", out)
+	}
+
+	data["isCreateMode"] = false
+	data["nodeWorkflow"] = formData{State: State{Name: "review", Label: "In review", Color: "amber"}, Transitions: []Transition{{ID: 3, Label: "Approve"}}}
+	out = testkit.RenderNamed(t, "node_workflow_workflow", data, "partials/workflow_hooks.html")
+	if !strings.Contains(out, `value="3" class="btn btn-primary">Approve</button>`) || !strings.Contains(out, `class="btn btn-success">Save</button>`) ||
+		!strings.Contains(out, "a transition changes it") || strings.Contains(out, "nobody hears") {
+		t.Errorf("in review: %s", out)
+	}
+
 	data["nodeWorkflow"] = formData{State: State{Label: "In review", Color: "amber"}}
 	if out := testkit.RenderNamed(t, "node_workflow_workflow", data, "partials/workflow_hooks.html"); strings.Contains(out, "workflow_comment") {
 		t.Errorf("a comment without transitions: %s", out)
