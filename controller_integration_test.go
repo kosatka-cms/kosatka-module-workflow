@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"strings"
 	"testing"
+	"time"
 
+	"github.com/kosatka-cms/kosatka/modulekit"
 	"github.com/kosatka-cms/kosatka/modulekit/testkit"
 )
 
@@ -87,6 +89,64 @@ func TestInStateSorted(t *testing.T) {
 		items, _, err := repo.InState(ctx, "review", QueueSort{Key: QueueSortUpdated, Desc: true}, 1, 1)
 		if err != nil || len(items) != 1 || items[0].Nid != 7 || items[0].Updated.UTC().Day() != 2 || items[0].ChangedAt.UTC().Hour() != 10 {
 			t.Errorf("the second page of one: %+v %v", items, err)
+		}
+	})
+}
+
+// TestJoinKeepsLastSave - a type joining the workflow: its item on
+// moderation gets the waiting state, unpublished and off moderation, the
+// published one the first state on the site, the unpublished one the
+// initial; none of them counts as saved now (their last save stays).
+func TestJoinKeepsLastSave(t *testing.T) {
+	testkit.SchemaDB(t, func(t *testing.T, db testkit.DB) {
+		ctx := context.Background()
+		saved := time.Date(2026, 11, 3, 10, 0, 0, 0, time.UTC)
+		for _, q := range []string{
+			`INSERT INTO users (id, username, slug, password_hash) VALUES (1, 'marta', 'users/marta', '')`,
+			`INSERT INTO nodes (id, type, title, slug, created_by, status, on_moderation) VALUES
+				(5, 'article', 'Waiting', 'news/waiting', 1, 1, 1),
+				(6, 'article', 'Out', 'news/out', 1, 1, 0),
+				(7, 'article', 'Draft', 'news/draft', 1, 0, 0)`,
+		} {
+			if _, err := db.DB.ExecContext(ctx, q); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if _, err := db.DB.ExecContext(ctx, modulekit.Rebind(`UPDATE nodes SET updated_at = ?`), saved); err != nil {
+			t.Fatal(err)
+		}
+		d := testkit.Deps(db)
+		w := NewWorkflow(NewRepo(db.DB), d.NodeRepo, testkit.Auth{})
+		cfg := Config{Types: []string{"article"}, LockMinutes: DefaultLockMinutes, States: []State{
+			{Name: "draft", Label: "Draft", Initial: true},
+			{Name: "review", Label: "In review", Weight: 1},
+			{Name: "published", Label: "Published", Published: true, Weight: 2},
+		}}
+		if err := w.SaveConfig(ctx, db.DB, cfg); err != nil {
+			t.Fatal(err)
+		}
+		states, err := NewRepo(db.DB).States(ctx, []int{5, 6, 7})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if states[5].State != "review" || states[6].State != "published" || states[7].State != "draft" {
+			t.Errorf("states: %+v", states)
+		}
+		rows, err := db.DB.QueryContext(ctx, `SELECT id, status, on_moderation, updated_at FROM nodes ORDER BY id`)
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer func() { _ = rows.Close() }()
+		want := map[int][2]int{5: {0, 0}, 6: {1, 0}, 7: {0, 0}}
+		for rows.Next() {
+			var id, status, moderation int
+			var updated time.Time
+			if err := rows.Scan(&id, &status, &moderation, &updated); err != nil {
+				t.Fatal(err)
+			}
+			if [2]int{status, moderation} != want[id] || !updated.Equal(saved) {
+				t.Errorf("node %d: status %d, moderation %d, updated %v (want %v, %v)", id, status, moderation, updated, want[id], saved)
+			}
 		}
 	})
 }
