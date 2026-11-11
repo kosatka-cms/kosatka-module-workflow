@@ -223,9 +223,14 @@ func (w *Workflow) Allowed(ctx context.Context, user *modulekit.User, state stri
 		return nil, err
 	}
 	full := w.auth != nil && w.auth.HasPermission(ctx, user, modulekit.PermFullAccess)
-	roles := modulekit.UserRoleNames(user)
+	return cfg.allowedFrom(state, modulekit.UserRoleNames(user), full), nil
+}
+
+// allowedFrom - the transitions from state of a user with roles: those
+// naming one of them, every one with full access (full).
+func (c Config) allowedFrom(state string, roles []string, full bool) []Transition {
 	var out []Transition
-	for _, t := range cfg.Transitions {
+	for _, t := range c.Transitions {
 		if !slices.Contains(t.From, state) {
 			continue
 		}
@@ -233,7 +238,7 @@ func (w *Workflow) Allowed(ctx context.Context, user *modulekit.User, state stri
 			out = append(out, t)
 		}
 	}
-	return out, nil
+	return out
 }
 
 // Make moves node from its state by t (by user, with comment): records

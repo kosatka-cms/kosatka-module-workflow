@@ -26,11 +26,15 @@ const (
 )
 
 // install writes the default workflow: draft → in review → approved →
-// published → archived; signed-in users send to review, the rest only
-// whoever has full access until the site gives roles. No content type
-// follows it yet.
+// published → archived; signed-in users send to review, the rest is the
+// roles' with full access (the administrator's), named so the settings
+// show who makes them. No content type follows it yet.
 func install(ctx context.Context, env manifestkit.InstallEnv) error {
 	c := generated.NewClient(generated.Driver(manifestkit.Driver(env)))
+	editors, err := manifestkit.FullAccessRoles(ctx, env)
+	if err != nil {
+		return err
+	}
 	states := []struct {
 		name, label, color string
 		published, initial bool
@@ -54,11 +58,11 @@ func install(ctx context.Context, env manifestkit.InstallEnv) error {
 		comment   string
 	}{
 		{[]string{StateDraft}, StateReview, i18n.N("Send to review"), []string{manifestkit.RoleUser}, CommentOptional},
-		{[]string{StateReview}, StateDraft, i18n.N("Return to the author"), nil, CommentRequired},
-		{[]string{StateReview}, StateApproved, i18n.N("Approve"), nil, CommentOptional},
-		{[]string{StateApproved, StateReview}, StatePublished, i18n.N("Publish"), nil, CommentNone},
-		{[]string{StatePublished}, StateArchived, i18n.N("Archive"), nil, CommentNone},
-		{[]string{StateArchived}, StateDraft, i18n.N("Back to work"), nil, CommentNone},
+		{[]string{StateReview}, StateDraft, i18n.N("Return to the author"), editors, CommentRequired},
+		{[]string{StateReview}, StateApproved, i18n.N("Approve"), editors, CommentOptional},
+		{[]string{StateApproved, StateReview}, StatePublished, i18n.N("Publish"), editors, CommentNone},
+		{[]string{StatePublished}, StateArchived, i18n.N("Archive"), editors, CommentNone},
+		{[]string{StateArchived}, StateDraft, i18n.N("Back to work"), editors, CommentNone},
 	}
 	for i, t := range transitions {
 		roles := t.roles

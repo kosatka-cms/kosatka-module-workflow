@@ -4,7 +4,7 @@ go 1.27
 
 require (
 	entgo.io/ent v0.14.6
-	github.com/kosatka-cms/kosatka v0.1.11-0.20261111213610-7f81b09011ae
+	github.com/kosatka-cms/kosatka v0.1.11-0.20261111222501-045f66eb42bc
 )
 
 require (

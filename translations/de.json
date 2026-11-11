@@ -8,7 +8,7 @@
     "A state needs a name and a machine name: lower-case Latin letters, digits and _, starting with a letter.": "Ein Zustand braucht einen Namen und einen Maschinennamen: lateinische Kleinbuchstaben, Ziffern und _, beginnend mit einem Buchstaben.",
     "A transition needs a state it goes to and one it goes from (another).": "Ein Übergang braucht einen Zielzustand und einen (anderen) Ausgangszustand.",
     "Amber": "Bernstein",
-    "An item came to a state neither initial nor on the site (in review, approved) from which the recipient's role may make a transition; a user may turn it off in their profile.": "Ein Inhalt ist in einem Zustand angekommen - weder dem ersten noch einem auf der Website (in Prüfung, freigegeben) -, aus dem die Rolle des Empfängers weiterleiten darf; ein Benutzer kann es in seinem Profil abschalten.",
+    "An item came to a state neither initial nor on the site (in review, approved): to who moved it before and may take the next step; the first time, to the roles of the transitions from that state, none named - to who has full access. A user may turn it off in their profile.": "Ein Inhalt ist in einem Zustand angekommen - weder dem ersten noch einem auf der Website (in Prüfung, freigegeben): an die, die ihn schon weitergeleitet haben und den nächsten Schritt machen dürfen; beim ersten Mal an die Rollen der Übergänge aus diesem Zustand, ohne Rollen an die mit Vollzugriff. Ein Benutzer kann sie in seinem Profil abschalten.",
     "An item waits for you in the editorial workflow": "Ein Inhalt wartet im Redaktionsablauf auf Sie",
     "Approved": "Freigegeben",
     "Archive": "Archivieren",
@@ -77,8 +77,8 @@
     "none": "keiner",
     "released by itself after": "wird von selbst aufgehoben nach",
     "required": "erforderlich",
+    "to its editors, the first time to the roles of the next step": "an seine Redakteure, beim ersten Mal an die Rollen des nächsten Schritts",
     "to the item's author": "an den Autor des Inhalts",
-    "to the roles named in the transitions from that state": "an die Rollen der Übergänge aus diesem Zustand",
     "visible": "sichtbar"
   }
 }

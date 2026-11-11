@@ -16,7 +16,7 @@ func Wire(d modulekit.Deps) modulekit.Parts {
 	w := NewWorkflow(repo, d.NodeRepo, d.Auth)
 	// A transition's e-mails: to the item's author, to the next step's
 	// roles; who gets them - the profile's setting.
-	w.mail = &mailer{repo: repo, nodes: d.NodeRepo, users: d.Users, roles: d.Roles, site: d.SiteInformation, types: d.ContentTypes,
+	w.mail = &mailer{repo: repo, nodes: d.NodeRepo, users: d.Users, roles: d.Roles, auth: d.Auth, site: d.SiteInformation, types: d.ContentTypes,
 		mail: d.Mail, logger: d.Logger, baseURL: modulekit.MailBaseURL}
 	for _, def := range mailDefs() {
 		modulekit.AddMail(def)
