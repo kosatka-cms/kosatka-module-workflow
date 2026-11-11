@@ -5,6 +5,7 @@ package generated
 import (
 	"github.com/kosatka-cms/kosatka-module-workflow/ent/generated/history"
 	"github.com/kosatka-cms/kosatka-module-workflow/ent/generated/nodestate"
+	"github.com/kosatka-cms/kosatka-module-workflow/ent/generated/usersettings"
 	"github.com/kosatka-cms/kosatka-module-workflow/ent/generated/workflowsettings"
 	"github.com/kosatka-cms/kosatka-module-workflow/ent/generated/workflowstate"
 	"github.com/kosatka-cms/kosatka-module-workflow/ent/generated/workflowtransition"
@@ -39,6 +40,12 @@ func init() {
 	nodestateDescChangedBy := nodestateFields[4].Descriptor()
 	// nodestate.DefaultChangedBy holds the default value on creation for the changed_by field.
 	nodestate.DefaultChangedBy = nodestateDescChangedBy.Default.(int)
+	usersettingsFields := schema.UserSettings{}.Fields()
+	_ = usersettingsFields
+	// usersettingsDescMail is the schema descriptor for mail field.
+	usersettingsDescMail := usersettingsFields[2].Descriptor()
+	// usersettings.DefaultMail holds the default value on creation for the mail field.
+	usersettings.DefaultMail = usersettingsDescMail.Default.(bool)
 	workflowsettingsFields := schema.WorkflowSettings{}.Fields()
 	_ = workflowsettingsFields
 	// workflowsettingsDescLockMinutes is the schema descriptor for lock_minutes field.

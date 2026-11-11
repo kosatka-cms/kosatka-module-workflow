@@ -18,6 +18,12 @@ type Node func(*sql.Selector)
 // NodeState is the predicate function for nodestate builders.
 type NodeState func(*sql.Selector)
 
+// User is the predicate function for user builders.
+type User func(*sql.Selector)
+
+// UserSettings is the predicate function for usersettings builders.
+type UserSettings func(*sql.Selector)
+
 // WorkflowSettings is the predicate function for workflowsettings builders.
 type WorkflowSettings func(*sql.Selector)
 

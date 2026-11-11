@@ -113,6 +113,43 @@ var (
 			},
 		},
 	}
+	// UsersColumns holds the columns for the "users" table.
+	UsersColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true, SchemaType: map[string]string{"mysql": "int unsigned"}},
+	}
+	// UsersTable holds the schema information for the "users" table.
+	UsersTable = &schema.Table{
+		Name:       "users",
+		Columns:    UsersColumns,
+		PrimaryKey: []*schema.Column{UsersColumns[0]},
+	}
+	// WorkflowUserSettingsColumns holds the columns for the "workflow_user_settings" table.
+	WorkflowUserSettingsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt, Increment: true, SchemaType: map[string]string{"mysql": "int unsigned"}},
+		{Name: "mail", Type: field.TypeBool, Default: true},
+		{Name: "user_id", Type: field.TypeInt, SchemaType: map[string]string{"mysql": "int unsigned"}},
+	}
+	// WorkflowUserSettingsTable holds the schema information for the "workflow_user_settings" table.
+	WorkflowUserSettingsTable = &schema.Table{
+		Name:       "workflow_user_settings",
+		Columns:    WorkflowUserSettingsColumns,
+		PrimaryKey: []*schema.Column{WorkflowUserSettingsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "workflow_user_settings_users_user",
+				Columns:    []*schema.Column{WorkflowUserSettingsColumns[2]},
+				RefColumns: []*schema.Column{UsersColumns[0]},
+				OnDelete:   schema.Cascade,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "workflow_user_settings_user",
+				Unique:  true,
+				Columns: []*schema.Column{WorkflowUserSettingsColumns[2]},
+			},
+		},
+	}
 	// WorkflowSettingsColumns holds the columns for the "workflow_settings" table.
 	WorkflowSettingsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt, Increment: true, SchemaType: map[string]string{"mysql": "int unsigned"}},
@@ -170,6 +207,8 @@ var (
 		WorkflowLocksTable,
 		NodesTable,
 		WorkflowNodeStatesTable,
+		UsersTable,
+		WorkflowUserSettingsTable,
 		WorkflowSettingsTable,
 		WorkflowStatesTable,
 		WorkflowTransitionsTable,
@@ -197,6 +236,17 @@ func init() {
 	WorkflowNodeStatesTable.ForeignKeys[0].RefTable = NodesTable
 	WorkflowNodeStatesTable.Annotation = &entsql.Annotation{
 		Table:     "workflow_node_states",
+		Charset:   "utf8mb4",
+		Collation: "utf8mb4_unicode_ci",
+	}
+	UsersTable.Annotation = &entsql.Annotation{
+		Table:     "users",
+		Charset:   "utf8mb4",
+		Collation: "utf8mb4_unicode_ci",
+	}
+	WorkflowUserSettingsTable.ForeignKeys[0].RefTable = UsersTable
+	WorkflowUserSettingsTable.Annotation = &entsql.Annotation{
+		Table:     "workflow_user_settings",
 		Charset:   "utf8mb4",
 		Collation: "utf8mb4_unicode_ci",
 	}

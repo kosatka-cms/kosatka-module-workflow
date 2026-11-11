@@ -89,3 +89,18 @@
         {{with .Comment}}<p class="workflow-history-comment">{{.}}</p>{{end}}
     </li>{{end}}
 </ol>{{end}}
+
+{{/* user_settings_workflow - the profile form's section: whether the
+     user gets the editorial workflow's e-mails (userSettingsSection). */}}
+{{define "user_settings_workflow"}}
+{{with .moduleSettings}}{{with .workflow}}
+<section class="node-edit-card" aria-labelledby="workflow-settings-title">
+    <h2 class="node-edit-card-title" id="workflow-settings-title">{{t "Editorial workflow"}}</h2>
+    <input type="hidden" name="workflow_user_settings" value="1">
+    <div class="form-check">
+        <input type="checkbox" class="form-check-input" id="workflow_mail" name="workflow_mail" value="1" {{if .Mail}}checked{{end}}>
+        <label class="form-check-label" for="workflow_mail">{{t "E-mail me when my item moves in the editorial workflow or an item waits for me"}}</label>
+    </div>
+</section>
+{{end}}{{end}}
+{{end}}

@@ -30,7 +30,7 @@ func Module() manifestkit.Module {
 		Category:    manifestkit.CategoryContent,
 		CSS:         []string{"workflow"},
 		JS:          []string{"workflow"},
-		Tables:      []string{"workflow_states", "workflow_transitions", "workflow_settings", "workflow_node_states", "workflow_history", "workflow_locks"},
+		Tables:      []string{"workflow_states", "workflow_transitions", "workflow_settings", "workflow_node_states", "workflow_history", "workflow_locks", "workflow_user_settings"},
 		AdminMenu: []manifestkit.ModuleMenuItem{
 			{Section: manifestkit.AdminSectionContent, Item: manifestkit.AdminMenuItem{Label: i18n.N("Editorial"), Path: QueuePath}},
 			{Section: manifestkit.AdminSectionConfiguration, Item: manifestkit.AdminMenuItem{Label: i18n.N("Editorial workflow"), Path: SettingsPath, Group: manifestkit.AdminGroupSite}},

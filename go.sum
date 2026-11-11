@@ -64,8 +64,8 @@ github.com/jackc/puddle/v2 v2.2.3 h1:f8HoREISb3l5eO9coPgK7U3hKLhWGokOFVcThl5jrao
 github.com/jackc/puddle/v2 v2.2.3/go.mod h1:vriiEXHvEE654aYKXXjOvZM39qJ0q+azkZFrfEOc3H4=
 github.com/joho/godotenv v1.5.1 h1:7eLL/+HRGLY0ldzfGMeQkb7vMd0as4CfYvUVzLqw0N0=
 github.com/joho/godotenv v1.5.1/go.mod h1:f4LDr5Voq0i2e/R5DDNOoa2zzDfwtkZa6DnEwAbqwq4=
-github.com/kosatka-cms/kosatka v0.1.10 h1:z0NT80mo2CSq51+ULMa5h1ds90xPQyEZFznJB/6j/MQ=
-github.com/kosatka-cms/kosatka v0.1.10/go.mod h1:hHwULZrQ86pfKUDedo+WXKcPEhS9SHqEfo5wC+OmPsI=
+github.com/kosatka-cms/kosatka v0.1.11-0.20261111213610-7f81b09011ae h1:NDmKigskVFdc4Omvnvu9RWQ+Ge9DKa0S4K1bvmkx9io=
+github.com/kosatka-cms/kosatka v0.1.11-0.20261111213610-7f81b09011ae/go.mod h1:BGiR5RHmSvmLtgqiwolN3ufGkmyYnmNr+ftj3PFmZa8=
 github.com/kr/pretty v0.3.1 h1:flRD4NNwYAUpkphVc1HcthR4KEIFJ65n8Mw5qdRn3LE=
 github.com/kr/pretty v0.3.1/go.mod h1:hoEshYVHaxMs3cyo3Yncou5ZscifuDolrwPKZanG3xk=
 github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=

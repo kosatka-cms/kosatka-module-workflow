@@ -12,6 +12,7 @@ import (
 	"github.com/kosatka-cms/kosatka-module-workflow/ent/generated/history"
 	"github.com/kosatka-cms/kosatka-module-workflow/ent/generated/lock"
 	"github.com/kosatka-cms/kosatka-module-workflow/ent/generated/nodestate"
+	"github.com/kosatka-cms/kosatka-module-workflow/ent/generated/usersettings"
 	"github.com/kosatka-cms/kosatka-module-workflow/ent/generated/workflowstate"
 	"github.com/kosatka-cms/kosatka-module-workflow/ent/generated/workflowtransition"
 	"github.com/kosatka-cms/kosatka/modulekit"
@@ -386,4 +387,34 @@ func (r *Repo) ReleaseLock(ctx context.Context, nid, uid int) error {
 // lockOf - row as a Lock.
 func lockOf(row *generated.Lock) Lock {
 	return Lock{Nid: row.Nid, UID: row.UID, LockedAt: row.LockedAt, TouchedAt: row.TouchedAt}
+}
+
+// MailOff - those of userIDs who turned the module's e-mails off.
+func (r *Repo) MailOff(ctx context.Context, userIDs []int) (map[int]bool, error) {
+	off := map[int]bool{}
+	if len(userIDs) == 0 {
+		return off, nil
+	}
+	ids, err := r.client(ctx).UserSettings.Query().Where(usersettings.UserIDIn(userIDs...), usersettings.Mail(false)).Select(usersettings.FieldUserID).Ints(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("the users' e-mail settings: %w", err)
+	}
+	for _, id := range ids {
+		off[id] = true
+	}
+	return off, nil
+}
+
+// SetMail stores whether the user gets the module's e-mails (the row made
+// on the first save).
+func (r *Repo) SetMail(ctx context.Context, userID int, on bool) error {
+	c := r.client(ctx)
+	n, err := c.UserSettings.Update().Where(usersettings.UserID(userID)).SetMail(on).Save(ctx)
+	if err == nil && n == 0 {
+		err = c.UserSettings.Create().SetUserID(userID).SetMail(on).Exec(ctx)
+	}
+	if err != nil {
+		return fmt.Errorf("saving the e-mail setting of user %d: %w", userID, err)
+	}
+	return nil
 }
