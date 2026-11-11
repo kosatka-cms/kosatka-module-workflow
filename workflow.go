@@ -146,7 +146,8 @@ func (w *Workflow) Config(ctx context.Context) (Config, error) {
 
 // SaveConfig saves the workflow's settings; the items of a type newly
 // following it get a state (Repo.Backfill): those on moderation the
-// waiting one, unpublished and off moderation as it is.
+// waiting one, unpublished and off moderation as it is - a change of the
+// site's, not an edit: their last save stays (SetPublishing).
 func (w *Workflow) SaveConfig(ctx context.Context, db *sql.DB, cfg Config) error {
 	err := modulekit.InTx(ctx, db, func(ctx context.Context) error {
 		if err := w.repo.SaveConfig(ctx, cfg); err != nil {
@@ -157,9 +158,13 @@ func (w *Workflow) SaveConfig(ctx context.Context, db *sql.DB, cfg Config) error
 		if err != nil {
 			return err
 		}
+		status := 0
+		if waiting.Published {
+			status = 1
+		}
 		for _, nid := range moderated {
-			if err := w.publish(ctx, nid, waiting); err != nil {
-				return err
+			if err := w.nodes.SetPublishing(ctx, nid, status, 0); err != nil {
+				return fmt.Errorf("the publishing of node %d joining the workflow: %w", nid, err)
 			}
 		}
 		return nil
