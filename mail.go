@@ -18,8 +18,8 @@ import (
 )
 
 // The module's e-mails (modulekit.AddMail): to an item's author when
-// someone else moved it; to who may make the next transition when it
-// comes to a state waiting for them.
+// someone else moved it; to who it waits for when it comes to a state
+// neither initial nor on the site (mailer.waitingFor).
 const (
 	MailAuthor  = manifest.Name + ".author"
 	MailWaiting = manifest.Name + ".waiting"
@@ -55,8 +55,8 @@ func mailDefs() []modulekit.MailDef {
 		{
 			Key: MailWaiting, Module: manifest.Name, Weight: 11, Optional: true, Placeholders: placeholders, Sample: sample,
 			Label:       i18n.N("An item waits for you in the editorial workflow"),
-			Description: i18n.N("An item came to a state neither initial nor on the site (in review, approved) from which the recipient's role may make a transition; a user may turn it off in their profile."),
-			Recipient:   i18n.N("to the roles named in the transitions from that state"),
+			Description: i18n.N("An item came to a state neither initial nor on the site (in review, approved): to who moved it before and may take the next step; the first time, to the roles of the transitions from that state, none named - to who has full access. A user may turn it off in their profile."),
+			Recipient:   i18n.N("to its editors, the first time to the roles of the next step"),
 			Default: modulekit.MailTemplate{
 				Subject: i18n.N("\"[workflow:title]\" waits: [workflow:to]"),
 				Body:    i18n.N("Hello, [user:name]!\n\n[workflow:by] moved the item \"[workflow:title]\" ([workflow:type]) to \"[workflow:to]\". The next step is yours.\n\n[workflow:comment]\n\nOpen the item: [workflow:edit-url]\nThe editorial queue: [workflow:queue-url]\n\n[site:name]"),
@@ -73,6 +73,7 @@ type mailer struct {
 	roles interface {
 		Roles(ctx context.Context) (modulekit.Roles, error)
 	}
+	auth    modulekit.AuthService
 	site    modulekit.SiteInformationRepository
 	types   modulekit.ContentTypeService
 	mail    mailtemplate.Mailer
@@ -106,8 +107,8 @@ func (m *mailer) later(cfg Config, t transition) {
 }
 
 // send - t's e-mails: to the item's author when someone else made it,
-// to who may make a transition from the new state when it waits for them
-// (recipients); never to who made it, nor to who turned the e-mails off.
+// to who the item waits for in the new state (recipients); never to who
+// made it, nor to who turned the e-mails off.
 func (m *mailer) send(ctx context.Context, cfg Config, t transition) error {
 	base := ""
 	if m.baseURL != nil {
@@ -166,9 +167,7 @@ func (m *mailer) send(ctx context.Context, cfg Config, t transition) error {
 
 // recipients - t's e-mails' recipients, active and with the e-mails on:
 // the item's author when someone else made the transition; for a state
-// neither initial nor on the site, the users of the roles named in the
-// transitions from it (not every signed-in user: the user role is left
-// out), but who made it and the author.
+// neither initial nor on the site, who it waits for (waitingFor).
 func (m *mailer) recipients(ctx context.Context, cfg Config, t transition) (*modulekit.User, []modulekit.User, error) {
 	var author *modulekit.User
 	authorID := t.Node.CreatedBy.ID
@@ -181,27 +180,9 @@ func (m *mailer) recipients(ctx context.Context, cfg Config, t transition) (*mod
 			author = u
 		}
 	}
-	var waiting []modulekit.User
-	if roleNames := nextRoles(cfg, t.To); len(roleNames) > 0 {
-		roles, err := m.roles.Roles(ctx)
-		if err != nil {
-			return nil, nil, fmt.Errorf("loading the roles: %w", err)
-		}
-		var roleIDs []int
-		for _, r := range roles {
-			if slices.Contains(roleNames, r.Name) {
-				roleIDs = append(roleIDs, r.ID)
-			}
-		}
-		users, err := m.users.UsersWithRoles(ctx, roleIDs)
-		if err != nil {
-			return nil, nil, fmt.Errorf("loading the users of the roles %v: %w", roleNames, err)
-		}
-		for _, u := range users {
-			if u.ID != t.By && u.ID != authorID {
-				waiting = append(waiting, u)
-			}
-		}
+	waiting, err := m.waitingFor(ctx, cfg, t)
+	if err != nil {
+		return nil, nil, err
 	}
 	ids := make([]int, 0, len(waiting)+1)
 	if author != nil {
@@ -219,6 +200,76 @@ func (m *mailer) recipients(ctx context.Context, cfg Config, t transition) (*mod
 	}
 	waiting = slices.DeleteFunc(waiting, func(u modulekit.User) bool { return off[u.ID] })
 	return author, waiting, nil
+}
+
+// waitingFor - who an item that came to t.To, a state neither initial
+// nor on the site, waits for: who made its transitions before and may
+// make one from that state now (the editor who returned it, when the
+// author sends it again); none such - the item comes for the first time -
+// the users of the roles named in the transitions from it (nextRoles),
+// none named - of the roles with full access. Never who made t, nor the
+// author (they have their own e-mail); active users only.
+func (m *mailer) waitingFor(ctx context.Context, cfg Config, t transition) ([]modulekit.User, error) {
+	if t.To.Initial || t.To.Published {
+		return nil, nil
+	}
+	authorID := t.Node.CreatedBy.ID
+	skip := func(id int) bool { return id <= 0 || id == t.By || id == authorID }
+	editors, err := m.editors(ctx, cfg, t, skip)
+	if err != nil || len(editors) > 0 {
+		return editors, err
+	}
+	roleNames := nextRoles(cfg, t.To)
+	roles, err := m.roles.Roles(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("loading the roles: %w", err)
+	}
+	var roleIDs []int
+	for _, r := range roles {
+		if slices.Contains(roleNames, r.Name) || len(roleNames) == 0 && r.Grants(modulekit.PermFullAccess) {
+			roleIDs = append(roleIDs, r.ID)
+		}
+	}
+	users, err := m.users.UsersWithRoles(ctx, roleIDs)
+	if err != nil {
+		return nil, fmt.Errorf("loading the users of the roles %v: %w", roleIDs, err)
+	}
+	return slices.DeleteFunc(users, func(u modulekit.User) bool { return skip(u.ID) }), nil
+}
+
+// editors - who made the item's transitions before (skip aside), active
+// and may make one from t.To now, by id.
+func (m *mailer) editors(ctx context.Context, cfg Config, t transition, skip func(int) bool) ([]modulekit.User, error) {
+	entries, err := m.repo.History(ctx, t.Node.ID, 0)
+	if err != nil {
+		return nil, err
+	}
+	var ids []int
+	for _, e := range entries {
+		if !skip(e.UID) && !slices.Contains(ids, e.UID) {
+			ids = append(ids, e.UID)
+		}
+	}
+	if len(ids) == 0 {
+		return nil, nil
+	}
+	users, err := m.users.ByIDs(ctx, ids)
+	if err != nil {
+		return nil, fmt.Errorf("loading who made the item's transitions: %w", err)
+	}
+	slices.Sort(ids)
+	var out []modulekit.User
+	for _, id := range ids {
+		u, ok := users[id]
+		if !ok || u.Status != modulekit.UserStatusActive {
+			continue
+		}
+		full := m.auth != nil && m.auth.HasPermission(ctx, &u, modulekit.PermFullAccess)
+		if len(cfg.allowedFrom(t.To.Name, modulekit.UserRoleNames(&u), full)) > 0 {
+			out = append(out, u)
+		}
+	}
+	return out, nil
 }
 
 // nextRoles - the roles to tell an item came to state: those named in

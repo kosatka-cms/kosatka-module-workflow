@@ -8,7 +8,7 @@
     "A state needs a name and a machine name: lower-case Latin letters, digits and _, starting with a letter.": "Un estado necesita un nombre y un nombre de máquina: letras latinas minúsculas, dígitos y _, empezando por una letra.",
     "A transition needs a state it goes to and one it goes from (another).": "Una transición necesita un estado de destino y uno de origen (distinto).",
     "Amber": "Ámbar",
-    "An item came to a state neither initial nor on the site (in review, approved) from which the recipient's role may make a transition; a user may turn it off in their profile.": "Un contenido llegó a un estado - ni el inicial ni uno en el sitio (en revisión, aprobado) - desde el que el rol del destinatario puede moverlo; el usuario puede desactivarlo en su perfil.",
+    "An item came to a state neither initial nor on the site (in review, approved): to who moved it before and may take the next step; the first time, to the roles of the transitions from that state, none named - to who has full access. A user may turn it off in their profile.": "Un contenido llegó a un estado - ni el inicial ni uno en el sitio (en revisión, aprobado): a quienes ya lo movieron y pueden dar el siguiente paso; la primera vez, a los roles de las transiciones desde ese estado, y sin roles, a quienes tienen acceso total. El usuario puede desactivarlo en su perfil.",
     "An item waits for you in the editorial workflow": "Un contenido te espera en el flujo editorial",
     "Approved": "Aprobado",
     "Archive": "Archivar",
@@ -77,8 +77,8 @@
     "none": "ninguno",
     "released by itself after": "se libera solo tras",
     "required": "obligatorio",
+    "to its editors, the first time to the roles of the next step": "a sus editores; la primera vez, a los roles del siguiente paso",
     "to the item's author": "al autor del contenido",
-    "to the roles named in the transitions from that state": "a los roles indicados en las transiciones desde ese estado",
     "visible": "visible"
   }
 }

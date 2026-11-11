@@ -27,9 +27,9 @@ A new site built with it gets it with `app install -modules workflow,…`
 
 Enabling it installs the states above and six transitions: those four,
 *Archive* (published to archived) and *Back to work* (archived to draft).
-Only *Send to review* is given to a role, signed-in users; the others are
-for who has full access until you give them roles. No content type
-follows the workflow yet.
+*Send to review* is given to signed-in users, the others to the roles
+with full access (on a usual site, *Administrator*): give them to your
+editors' roles too. No content type follows the workflow yet.
 
 ## Setting it up
 
@@ -142,10 +142,12 @@ A transition sends two e-mails (from Kosatka 0.1.11):
   approved, published or archived it. The comment goes with it.
 - **An item waits for you in the editorial workflow** - when an item
   comes to a state neither initial nor on the site (*In review*,
-  *Approved*), to the users of the roles named in the transitions from
-  it: the editors, for an item sent to review. Not to every signed-in
-  user (a transition given to that role doesn't count) and not to who
-  may make it only by full access: give the editors a role of their own.
+  *Approved*), to who moved it before and may take the next step: the
+  editor who returned it with what to fix hears when the author sends it
+  again, the other editors don't. The first time, with no such editor, it
+  goes to the users of the roles named in the transitions from that state
+  (not to every signed-in user: a transition given to that role doesn't
+  count); with none named, to who has full access.
 
 Neither goes to who made the transition, and the author gets only the
 first one. Their texts are on the engine's **Configuration → Mail**
