@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/kosatka-cms/kosatka-module-workflow/manifest"
 	"github.com/kosatka-cms/kosatka/modulekit"
@@ -19,6 +20,58 @@ import (
 
 // queuePerPage - items on a page of the queue.
 const queuePerPage = 50
+
+// The queue's sort columns (QueueSort.Key, its "sort" parameter).
+const (
+	QueueSortUpdated = "updated"
+	QueueSortType    = "type"
+	QueueSortAuthor  = "author"
+	QueueSortTitle   = "title"
+)
+
+// QueueSort - the queue's order: a column (QueueSort*) and its direction.
+type QueueSort struct {
+	Key  string
+	Desc bool
+}
+
+// queueSortOf - the order r asks for ("sort", "order"): the last saved
+// first unless it names a column; a column's own direction
+// (queueSortDesc) without "order".
+func queueSortOf(r *http.Request) QueueSort {
+	q := r.URL.Query()
+	key := q.Get("sort")
+	if _, ok := queueOrder[key]; !ok {
+		key = QueueSortUpdated
+	}
+	desc := queueSortDesc[key]
+	switch q.Get("order") {
+	case "asc":
+		desc = false
+	case "desc":
+		desc = true
+	}
+	return QueueSort{Key: key, Desc: desc}
+}
+
+// queueSortDesc - the columns first sorted in descending order (the last
+// saved on top).
+var queueSortDesc = map[string]bool{QueueSortUpdated: true}
+
+// queueSortURL - the address sorting the queue's state tab by column: the
+// other direction when it is sorted by it already.
+func queueSortURL(state string, current QueueSort, column string) string {
+	desc := queueSortDesc[column]
+	if current.Key == column {
+		desc = !current.Desc
+	}
+	order := "asc"
+	if desc {
+		order = "desc"
+	}
+	v := url.Values{"state": {state}, "sort": {column}, "order": {order}}
+	return manifest.QueuePath + "?" + v.Encode()
+}
 
 // palette - the states' colours: a name stored, its hex shown.
 var palette = []struct{ Name, Label, Hex string }{
@@ -259,7 +312,7 @@ type queueRow struct {
 	Node        modulekit.Node
 	TypeLabel   string
 	Author      string
-	Since       NodeState
+	Updated     time.Time
 	Transitions []Transition
 	// EditedBy - who has its form open now ("" - nobody).
 	EditedBy string
@@ -303,7 +356,8 @@ func (c *Controller) Queue(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	page := c.GetPageNumber(r)
-	items, total, err := c.w.repo.InState(ctx, current, queuePerPage, (page-1)*queuePerPage)
+	sort := queueSortOf(r)
+	items, total, err := c.w.repo.InState(ctx, current, sort, queuePerPage, (page-1)*queuePerPage)
 	if err != nil {
 		c.RenderLoadFailure(w, r, err, "listing the queue")
 		return
@@ -324,6 +378,14 @@ func (c *Controller) Queue(w http.ResponseWriter, r *http.Request) {
 	data["pageSEO"] = modulekit.PageSEO{Title: i18n.T(ctx, "@title - Admin panel", "@title", data["title"])}
 	data["tabs"] = tabs
 	data["state"] = current
+	// sort, order and the columns' addresses: the headers sort the tab.
+	data["sort"] = sort.Key
+	data["order"] = map[bool]string{false: "asc", true: "desc"}[sort.Desc]
+	sortURLs := map[string]string{}
+	for key := range queueOrder {
+		sortURLs[key] = queueSortURL(current, sort, key)
+	}
+	data["sortURLs"] = sortURLs
 	data["rows"] = rows
 	data["total"] = total
 	q := r.URL.Query()
@@ -336,7 +398,7 @@ func (c *Controller) Queue(w http.ResponseWriter, r *http.Request) {
 // queueRows - the queue's items as rows: their content, authors and who
 // is editing them, read for the whole page at once (a missing item - one
 // deleted meanwhile - is left out).
-func (c *Controller) queueRows(ctx context.Context, items []NodeState, labels map[string]string, allowed []Transition) ([]queueRow, error) {
+func (c *Controller) queueRows(ctx context.Context, items []QueueItem, labels map[string]string, allowed []Transition) ([]queueRow, error) {
 	ids := make([]int, len(items))
 	for i, it := range items {
 		ids[i] = it.Nid
@@ -369,7 +431,7 @@ func (c *Controller) queueRows(ctx context.Context, items []NodeState, labels ma
 		if !ok {
 			continue
 		}
-		row := queueRow{Node: node, TypeLabel: labels[string(node.Type)], Author: names[node.CreatedBy.ID], Since: it, Transitions: allowed}
+		row := queueRow{Node: node, TypeLabel: labels[string(node.Type)], Author: names[node.CreatedBy.ID], Updated: it.Updated, Transitions: allowed}
 		if l, ok := locks[it.Nid]; ok {
 			row.EditedBy = names[l.UID]
 		}
@@ -380,7 +442,7 @@ func (c *Controller) queueRows(ctx context.Context, items []NodeState, labels ma
 
 // activeLocks - the active locks of items, by id (none - items aren't
 // locked, or they can't be read: the queue goes without them).
-func (c *Controller) activeLocks(ctx context.Context, items []NodeState) map[int]Lock {
+func (c *Controller) activeLocks(ctx context.Context, items []QueueItem) map[int]Lock {
 	since, _, on, err := c.w.lockSince(ctx)
 	if err != nil || !on {
 		return nil

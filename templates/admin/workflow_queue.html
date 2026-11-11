@@ -1,6 +1,7 @@
 {{/* admin/workflow_queue.html - the editorial queue (Controller.Queue):
      a tab per state with its items' count, the items in the current one -
-     the longest waiting first - with their type, author and since when,
+     the last saved first, or by the column whose header was clicked
+     (.sortURLs, .sort, .order) - with their type, author and last save,
      and the transitions the user may make from it (one asking for a
      comment opens its page). */}}
 {{template "layout.html" .}}
@@ -15,15 +16,21 @@
 <div class="admin-table-card">
     <div class="table-responsive">
         <table class="table admin-table align-middle">
-            <thead><tr><th>{{t "Content"}}</th><th>{{t "Type"}}</th><th>{{t "Author"}}</th><th>{{t "In this state since"}}</th><th class="text-end"><span class="visually-hidden">{{t "Operations"}}</span></th></tr></thead>
+            <thead><tr>
+                {{template "workflow_sort_th" (dict "Ctx" $ "Key" "title" "Label" (t "Content"))}}
+                {{template "workflow_sort_th" (dict "Ctx" $ "Key" "type" "Label" (t "Type"))}}
+                {{template "workflow_sort_th" (dict "Ctx" $ "Key" "author" "Label" (t "Author"))}}
+                {{template "workflow_sort_th" (dict "Ctx" $ "Key" "updated" "Label" (t "Updated"))}}
+                <th class="text-end"><span class="visually-hidden">{{t "Operations"}}</span></th>
+            </tr></thead>
             <tbody>
-                {{$back := print "/admin/content/workflow?state=" $.state}}
+                {{$back := print "/admin/content/workflow?state=" $.state "&sort=" $.sort "&order=" $.order}}
                 {{range .rows}}{{$row := .}}
                 <tr>
                     <td><a href="{{.Node.URL}}" class="admin-table-title">{{.Node.Title}}</a><span class="admin-table-sub"><a href="/node/{{.Node.ID}}/edit">{{t "Edit"}}</a>{{with .EditedBy}} · <span class="workflow-edited-by">{{t "Being edited by @name" "@name" .}}</span>{{end}}</span></td>
                     <td>{{.TypeLabel}}</td>
                     <td>{{.Author}}</td>
-                    <td class="text-nowrap">{{date .Since.ChangedAt "datetime"}}</td>
+                    <td class="text-nowrap">{{if not .Updated.IsZero}}{{date .Updated "datetime"}}{{end}}</td>
                     <td class="text-end text-nowrap">
                         {{range .Transitions}}
                         {{if eq .Comment "required"}}<a href="/admin/content/workflow/{{$row.Node.ID}}/{{.ID}}" class="btn btn-sm btn-outline-secondary">{{.Label}}</a>
@@ -40,3 +47,7 @@
 </div>
 {{template "pagination.html" .}}
 {{end}}
+
+{{/* workflow_sort_th - a column's header sorting the queue by it (Key),
+     its arrow when it is sorted so. */}}
+{{define "workflow_sort_th"}}<th><a href="{{index .Ctx.sortURLs .Key}}">{{.Label}}</a>{{if eq .Ctx.sort .Key}} {{if eq .Ctx.order "desc"}}↓{{else}}↑{{end}}{{end}}</th>{{end}}

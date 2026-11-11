@@ -1,6 +1,8 @@
 package workflow
 
 import (
+	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"testing"
 )
@@ -60,5 +62,39 @@ func TestSettingsLocking(t *testing.T) {
 	}
 	if opts := lockMinuteOptions(0); !opts[1].On || opts[1].Minutes != DefaultLockMinutes {
 		t.Errorf("off: %+v, want the default chosen", opts)
+	}
+}
+
+// TestQueueSort - the order a request asks for: the last saved first by
+// default, a column's own direction without "order"; a header's address
+// sorts by its column, the other way when sorted by it already.
+func TestQueueSort(t *testing.T) {
+	for query, want := range map[string]QueueSort{
+		"":                       {Key: QueueSortUpdated, Desc: true},
+		"sort=nonsense":          {Key: QueueSortUpdated, Desc: true},
+		"sort=since":             {Key: QueueSortUpdated, Desc: true},
+		"sort=updated":           {Key: QueueSortUpdated, Desc: true},
+		"sort=updated&order=asc": {Key: QueueSortUpdated},
+		"sort=author&order=desc": {Key: QueueSortAuthor, Desc: true},
+		"sort=type":              {Key: QueueSortType},
+	} {
+		r := httptest.NewRequest(http.MethodGet, "/admin/content/workflow?"+query, nil)
+		if got := queueSortOf(r); got != want {
+			t.Errorf("%q: %+v, want %+v", query, got, want)
+		}
+	}
+	for _, tc := range []struct {
+		current QueueSort
+		column  string
+		want    string
+	}{
+		{QueueSort{Key: QueueSortTitle}, QueueSortUpdated, "/admin/content/workflow?order=desc&sort=updated&state=review"},
+		{QueueSort{Key: QueueSortUpdated, Desc: true}, QueueSortUpdated, "/admin/content/workflow?order=asc&sort=updated&state=review"},
+		{QueueSort{Key: QueueSortType}, QueueSortType, "/admin/content/workflow?order=desc&sort=type&state=review"},
+		{QueueSort{Key: QueueSortUpdated, Desc: true}, QueueSortType, "/admin/content/workflow?order=asc&sort=type&state=review"},
+	} {
+		if got := queueSortURL("review", tc.current, tc.column); got != tc.want {
+			t.Errorf("%+v %s: %s, want %s", tc.current, tc.column, got, tc.want)
+		}
 	}
 }
