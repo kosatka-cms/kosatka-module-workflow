@@ -79,8 +79,21 @@ button per transition the user may make; *Save* keeps the state. The
 publishing checkboxes and the schedule aren't there: the transitions
 publish and unpublish.
 
-When the last transition left a comment (*Return to the author* with what
-to fix), the form shows it over the fields.
+Over the fields, the form shows the item's **editorial history**: every
+transition made, the newest first - who made it (its author marked), the
+button, from which state to which, when, and its comment (*Return to the
+author* with what to fix). It is open while the item isn't on the site,
+closed once it is.
+
+## On the item's page
+
+While an item isn't on the site, its page shows over it, to who may edit
+it (its author, the editors), its state, the latest transition with its
+comment, the whole history to open and a link to its form - so an
+author opening their draft sees what to fix. Nobody else sees it, and
+nobody once the item is on the site. It shows where the theme shows an
+item's *Pending moderation* notice (the engine's `node_notice` hook,
+from Kosatka 0.1.11).
 
 ## The editorial queue
 
@@ -97,7 +110,7 @@ initial nor on the site). The queue needs the *Access administration
 content form.
 
 Every transition is kept, with its comment, in the workflow's own record
-(the form shows the latest comment, above). One that publishes or
+(the item's history, above). One that publishes or
 unpublishes the item is also in the action log and, when its type keeps
 one, in the item's history.
 

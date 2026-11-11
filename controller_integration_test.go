@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/kosatka-cms/kosatka-module-workflow/manifest"
 	"github.com/kosatka-cms/kosatka/modulekit"
 	"github.com/kosatka-cms/kosatka/modulekit/testkit"
 )
@@ -146,6 +147,74 @@ func TestJoinKeepsLastSave(t *testing.T) {
 			}
 			if [2]int{status, moderation} != want[id] || !updated.Equal(saved) {
 				t.Errorf("node %d: status %d, moderation %d, updated %v (want %v, %v)", id, status, moderation, updated, want[id], saved)
+			}
+		}
+	})
+}
+
+// TestNodePageParts - an item's page: its author or editor (who may edit
+// it) sees its state and history while it isn't on the site, the newest
+// transition first with who made it (the author marked) and its button;
+// nobody sees it on a published item, nor who may not edit it, nor a
+// guest, nor on an item of a type not following the workflow.
+func TestNodePageParts(t *testing.T) {
+	testkit.WithModules(t, map[string]bool{manifest.Name: true})
+	testkit.SchemaDB(t, func(t *testing.T, db testkit.DB) {
+		ctx := context.Background()
+		for _, q := range []string{
+			`INSERT INTO users (id, username, slug, password_hash) VALUES (1, 'anna', 'users/anna', ''), (2, 'oleg', 'users/oleg', '')`,
+			`INSERT INTO nodes (id, type, title, slug, created_by, status) VALUES (5, 'article', 'Draft', 'news/draft', 1, 0), (6, 'article', 'Out', 'news/out', 1, 1), (7, 'page', 'About', 'about', 1, 0)`,
+		} {
+			if _, err := db.DB.ExecContext(ctx, q); err != nil {
+				t.Fatal(err)
+			}
+		}
+		d := testkit.Deps(db)
+		repo := NewRepo(db.DB)
+		w := NewWorkflow(repo, d.NodeRepo, testkit.Auth{})
+		cfg := Config{Types: []string{"article"}, LockMinutes: DefaultLockMinutes,
+			States:      []State{{Name: "draft", Label: "Draft", Initial: true}, {Name: "review", Label: "In review", Weight: 1}, {Name: "published", Label: "Published", Published: true, Weight: 2}},
+			Transitions: []Transition{{From: []string{"draft"}, To: "review", Label: "Send to review"}, {From: []string{"review"}, To: "draft", Label: "Return to the author", Weight: 1}}}
+		if err := w.SaveConfig(ctx, db.DB, cfg); err != nil {
+			t.Fatal(err)
+		}
+		at := time.Date(2026, 11, 11, 15, 20, 0, 0, time.UTC)
+		for _, h := range []HistoryEntry{
+			{Nid: 5, From: "draft", To: "review", UID: 1, At: at},
+			{Nid: 5, From: "review", To: "draft", UID: 2, Comment: "Add the source.", At: at.Add(time.Hour)},
+		} {
+			if err := repo.AddHistory(ctx, h); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if err := repo.SetNodeState(ctx, 5, "draft", 2, at.Add(time.Hour)); err != nil {
+			t.Fatal(err)
+		}
+		author := func(context.Context) (int, bool) { return 1, true }
+		page := nodePage{w: w, users: d.Users, auth: testkit.Auth{Allow: true}, viewer: author}
+		draft := modulekit.Node{ID: 5, Type: "article", Status: 0, CreatedBy: modulekit.User{ID: 1}}
+
+		h, ok := page.parts(ctx, draft).Data.(editorialHistory)
+		if !ok || h.State.Name != "draft" || !h.Open || len(h.Entries) != 2 {
+			t.Fatalf("the draft's history: %+v", h)
+		}
+		if e := h.Entries[0]; e.Who != "oleg" || e.ByAuthor || e.Action != "Return to the author" || e.To.Label != "Draft" || e.Comment != "Add the source." {
+			t.Errorf("the newest: %+v", e)
+		}
+		if e := h.Entries[1]; e.Who != "anna" || !e.ByAuthor || e.Action != "Send to review" || e.From.Label != "Draft" {
+			t.Errorf("the first: %+v", e)
+		}
+		for name, tc := range map[string]struct {
+			page nodePage
+			node modulekit.Node
+		}{
+			"published":        {page, modulekit.Node{ID: 6, Type: "article", Status: 1, CreatedBy: modulekit.User{ID: 1}}},
+			"may not edit":     {nodePage{w: w, users: d.Users, auth: testkit.Auth{}, viewer: author}, draft},
+			"a guest":          {nodePage{w: w, users: d.Users, auth: testkit.Auth{Allow: true}, viewer: func(context.Context) (int, bool) { return 0, false }}, draft},
+			"not following it": {page, modulekit.Node{ID: 7, Type: "page", Status: 0, CreatedBy: modulekit.User{ID: 1}}},
+		} {
+			if data := tc.page.parts(ctx, tc.node).Data; data != nil {
+				t.Errorf("%s: %+v", name, data)
 			}
 		}
 	})

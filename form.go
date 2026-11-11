@@ -7,7 +7,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/kosatka-cms/kosatka-module-workflow/manifest"
 	"github.com/kosatka-cms/kosatka/modulekit"
@@ -15,23 +14,13 @@ import (
 )
 
 // formData - the workflow's part of an item's form: its state, the
-// transitions the user may make, the latest transition's comment (Note)
-// when it brought the item to its state, its lock (nil - items aren't
-// locked, a new item).
+// transitions the user may make, its editorial history (nil - a new
+// item), its lock (nil - items aren't locked, a new item).
 type formData struct {
 	State       State
 	Transitions []Transition
-	Note        *transitionNote
+	History     *editorialHistory
 	Lock        *lockNote
-}
-
-// transitionNote - a transition made, as shown: who, when, into which
-// state, with what comment.
-type transitionNote struct {
-	Who     string
-	At      time.Time
-	State   string
-	Comment string
 }
 
 // users - the users the module names.
@@ -86,14 +75,11 @@ func (f nodeForm) load(ctx context.Context, _ string, node *modulekit.Node, user
 				data.Transitions = nil
 			}
 		}
-		entries, err := f.w.repo.History(ctx, node.ID, 1)
+		h, err := f.w.historyOf(ctx, *node, state, f.users)
 		if err != nil {
 			return nil, err
 		}
-		if len(entries) == 1 && entries[0].To == state.Name && strings.TrimSpace(entries[0].Comment) != "" {
-			e := entries[0]
-			data.Note = &transitionNote{Who: f.userName(ctx, e.UID), At: e.At, State: state.Label, Comment: e.Comment}
-		}
+		data.History = &h
 	}
 	return data, nil
 }
