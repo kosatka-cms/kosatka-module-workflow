@@ -1,5 +1,6 @@
 {
   "strings": {
+    "\"Save\" keeps it in \"@state\": nobody hears of it until you press \"@transition\".": "\"Speichern\" lässt den Inhalt im Zustand \"@state\": niemand erfährt davon, bis Sie \"@transition\" drücken.",
     "\"[workflow:title]\" waits: [workflow:to]": "„[workflow:title]“ wartet: [workflow:to]",
     "\"[workflow:title]\": [workflow:to]": "„[workflow:title]“: [workflow:to]",
     "@count minutes without activity": "@count Minuten ohne Aktivität",

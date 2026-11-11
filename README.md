@@ -75,9 +75,12 @@ page doesn't get them either.
 
 For a type following the workflow, the form's side card shows the item's
 state instead of *Published*, a *Comment* for whoever is next, and a
-button per transition the user may make; *Save* keeps the state. The
-publishing checkboxes and the schedule aren't there: the transitions
-publish and unpublish.
+button per transition the user may make, the first one the main
+button; *Save* keeps the state - a new item too, saved in the initial
+state (a draft): the author writes and saves, and sends it on when it is
+ready; the form tells them nobody hears of it until then. The publishing
+checkboxes and the schedule aren't there: the transitions publish and
+unpublish.
 
 Over the fields, the form shows the item's **editorial history**: every
 transition made, the newest first - who made it (its author marked), the
