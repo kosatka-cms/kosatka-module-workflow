@@ -133,6 +133,30 @@ The queue shows by an item who edits it now. **Editing → Editing lock**
 in the settings turns locking off or sets the time: 15, 30, 60 or 120
 minutes.
 
+## E-mails
+
+A transition sends two e-mails (from Kosatka 0.1.11):
+
+- **Your item moved in the editorial workflow** - to the item's author,
+  when someone else made the transition: returned it with what to fix,
+  approved, published or archived it. The comment goes with it.
+- **An item waits for you in the editorial workflow** - when an item
+  comes to a state neither initial nor on the site (*In review*,
+  *Approved*), to the users of the roles named in the transitions from
+  it: the editors, for an item sent to review. Not to every signed-in
+  user (a transition given to that role doesn't count) and not to who
+  may make it only by full access: give the editors a role of their own.
+
+Neither goes to who made the transition, and the author gets only the
+first one. Their texts are on the engine's **Configuration → Mail**
+page, with the placeholders `[workflow:title]`, `[workflow:type]`,
+`[workflow:by]`, `[workflow:action]`, `[workflow:to]`,
+`[workflow:comment]`, `[workflow:edit-url]` and `[workflow:queue-url]`;
+either can be turned off there for the whole site. A user turns both off
+for themselves in their profile settings, under *Editorial workflow*.
+The links need the site's address (*Site information*, or
+`public_base_url`): without it, nothing is sent.
+
 ## In Views
 
 A content View (see [Views](https://kosatka-cms.github.io/kosatka/guides/views/)) can use the workflow:

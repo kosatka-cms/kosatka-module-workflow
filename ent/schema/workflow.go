@@ -194,3 +194,45 @@ func (Node) Annotations() []schema.Annotation {
 func (Node) Fields() []ent.Field {
 	return []ent.Field{field.Int("id").SchemaType(schemakit.MySQLType("int unsigned"))}
 }
+
+// UserSettings - a user's settings of the module (their profile form):
+// whether they get its e-mails. No row - the default (on).
+type UserSettings struct{ ent.Schema }
+
+// Annotations of the UserSettings.
+func (UserSettings) Annotations() []schema.Annotation {
+	return []schema.Annotation{schemakit.Table("workflow_user_settings")}
+}
+
+// Fields of the UserSettings.
+func (UserSettings) Fields() []ent.Field {
+	return []ent.Field{
+		field.Int("id").SchemaType(schemakit.MySQLType("int unsigned")),
+		field.Int("user_id").SchemaType(schemakit.MySQLType("int unsigned")),
+		field.Bool("mail").Default(true),
+	}
+}
+
+// Edges of the UserSettings.
+func (UserSettings) Edges() []ent.Edge {
+	return []ent.Edge{edge.To("user", User.Type).Field("user_id").Unique().Required().Annotations(entsql.OnDelete(entsql.Cascade))}
+}
+
+// Indexes of the UserSettings.
+func (UserSettings) Indexes() []ent.Index {
+	return []ent.Index{index.Fields("user_id").Unique().StorageKey("workflow_user_settings_user")}
+}
+
+// User - the core's users (their id only): a user's settings, deleted
+// with them (ON DELETE CASCADE).
+type User struct{ ent.Schema }
+
+// Annotations of the User.
+func (User) Annotations() []schema.Annotation {
+	return []schema.Annotation{schemakit.Table("users")}
+}
+
+// Fields of the User.
+func (User) Fields() []ent.Field {
+	return []ent.Field{field.Int("id").SchemaType(schemakit.MySQLType("int unsigned"))}
+}

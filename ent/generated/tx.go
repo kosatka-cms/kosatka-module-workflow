@@ -20,6 +20,10 @@ type Tx struct {
 	Node *NodeClient
 	// NodeState is the client for interacting with the NodeState builders.
 	NodeState *NodeStateClient
+	// User is the client for interacting with the User builders.
+	User *UserClient
+	// UserSettings is the client for interacting with the UserSettings builders.
+	UserSettings *UserSettingsClient
 	// WorkflowSettings is the client for interacting with the WorkflowSettings builders.
 	WorkflowSettings *WorkflowSettingsClient
 	// WorkflowState is the client for interacting with the WorkflowState builders.
@@ -161,6 +165,8 @@ func (tx *Tx) init() {
 	tx.Lock = NewLockClient(tx.config)
 	tx.Node = NewNodeClient(tx.config)
 	tx.NodeState = NewNodeStateClient(tx.config)
+	tx.User = NewUserClient(tx.config)
+	tx.UserSettings = NewUserSettingsClient(tx.config)
 	tx.WorkflowSettings = NewWorkflowSettingsClient(tx.config)
 	tx.WorkflowState = NewWorkflowStateClient(tx.config)
 	tx.WorkflowTransition = NewWorkflowTransitionClient(tx.config)

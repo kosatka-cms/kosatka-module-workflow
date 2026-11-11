@@ -12,7 +12,16 @@ import (
 // count of what waits for the user by the queue's menu item; the state's
 // filter, field and sort criterion in content Views.
 func Wire(d modulekit.Deps) modulekit.Parts {
-	w := NewWorkflow(NewRepo(d.DB), d.NodeRepo, d.Auth)
+	repo := NewRepo(d.DB)
+	w := NewWorkflow(repo, d.NodeRepo, d.Auth)
+	// A transition's e-mails: to the item's author, to the next step's
+	// roles; who gets them - the profile's setting.
+	w.mail = &mailer{repo: repo, nodes: d.NodeRepo, users: d.Users, roles: d.Roles, site: d.SiteInformation, types: d.ContentTypes,
+		mail: d.Mail, logger: d.Logger, baseURL: modulekit.MailBaseURL}
+	for _, def := range mailDefs() {
+		modulekit.AddMail(def)
+	}
+	modulekit.AddUserSettingsSection(userSettingsSection(repo))
 	modulekit.SetNodeWorkflow(nodeForm{w: w, nodes: d.NodeRepo, users: d.Users, auth: d.Auth}.workflow())
 	// The item's page: its state and history for its author and editors
 	// while it isn't on the site (node_notice).

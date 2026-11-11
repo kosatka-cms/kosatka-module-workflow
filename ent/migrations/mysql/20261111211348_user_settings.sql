@@ -1,0 +1,2 @@
+-- Create "workflow_user_settings" table
+CREATE TABLE `workflow_user_settings` (`id` int unsigned NOT NULL AUTO_INCREMENT, `mail` bool NOT NULL DEFAULT true, `user_id` int unsigned NOT NULL, PRIMARY KEY (`id`), UNIQUE INDEX `workflow_user_settings_user` (`user_id`), CONSTRAINT `workflow_user_settings_users_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE) CHARSET utf8mb4 COLLATE utf8mb4_unicode_ci;

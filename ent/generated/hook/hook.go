@@ -57,6 +57,30 @@ func (f NodeStateFunc) Mutate(ctx context.Context, m generated.Mutation) (genera
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *generated.NodeStateMutation", m)
 }
 
+// The UserFunc type is an adapter to allow the use of ordinary
+// function as User mutator.
+type UserFunc func(context.Context, *generated.UserMutation) (generated.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f UserFunc) Mutate(ctx context.Context, m generated.Mutation) (generated.Value, error) {
+	if mv, ok := m.(*generated.UserMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *generated.UserMutation", m)
+}
+
+// The UserSettingsFunc type is an adapter to allow the use of ordinary
+// function as UserSettings mutator.
+type UserSettingsFunc func(context.Context, *generated.UserSettingsMutation) (generated.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f UserSettingsFunc) Mutate(ctx context.Context, m generated.Mutation) (generated.Value, error) {
+	if mv, ok := m.(*generated.UserSettingsMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *generated.UserSettingsMutation", m)
+}
+
 // The WorkflowSettingsFunc type is an adapter to allow the use of ordinary
 // function as WorkflowSettings mutator.
 type WorkflowSettingsFunc func(context.Context, *generated.WorkflowSettingsMutation) (generated.Value, error)

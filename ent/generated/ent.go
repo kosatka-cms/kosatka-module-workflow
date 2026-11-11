@@ -16,6 +16,8 @@ import (
 	"github.com/kosatka-cms/kosatka-module-workflow/ent/generated/lock"
 	"github.com/kosatka-cms/kosatka-module-workflow/ent/generated/node"
 	"github.com/kosatka-cms/kosatka-module-workflow/ent/generated/nodestate"
+	"github.com/kosatka-cms/kosatka-module-workflow/ent/generated/user"
+	"github.com/kosatka-cms/kosatka-module-workflow/ent/generated/usersettings"
 	"github.com/kosatka-cms/kosatka-module-workflow/ent/generated/workflowsettings"
 	"github.com/kosatka-cms/kosatka-module-workflow/ent/generated/workflowstate"
 	"github.com/kosatka-cms/kosatka-module-workflow/ent/generated/workflowtransition"
@@ -83,6 +85,8 @@ func checkColumn(t, c string) error {
 			lock.Table:               lock.ValidColumn,
 			node.Table:               node.ValidColumn,
 			nodestate.Table:          nodestate.ValidColumn,
+			user.Table:               user.ValidColumn,
+			usersettings.Table:       usersettings.ValidColumn,
 			workflowsettings.Table:   workflowsettings.ValidColumn,
 			workflowstate.Table:      workflowstate.ValidColumn,
 			workflowtransition.Table: workflowtransition.ValidColumn,

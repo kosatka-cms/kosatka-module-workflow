@@ -1,6 +1,8 @@
 package workflow
 
 import (
+	"regexp"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -171,5 +173,36 @@ func TestQueuePage(t *testing.T) {
 		if !strings.Contains(out, want) {
 			t.Errorf("no %s in %s", want, out)
 		}
+	}
+}
+
+// TestMailDefs - the e-mails' default texts use only the placeholders
+// they declare, and each its own.
+func TestMailDefs(t *testing.T) {
+	declared := regexp.MustCompile(`\[[a-z]+:[a-z-]+\]`)
+	for _, def := range mailDefs() {
+		for _, used := range declared.FindAllString(def.Default.Subject+def.Default.Body, -1) {
+			if !slices.Contains(def.Placeholders, used) {
+				t.Errorf("%s uses %s, not declared", def.Key, used)
+			}
+		}
+		if !strings.HasPrefix(def.Key, manifest.Name+".") || !def.Optional {
+			t.Errorf("%s: a module's optional e-mail", def.Key)
+		}
+	}
+}
+
+// TestUserSettingsRender - the profile form's section: the switch on
+// (the default) or off, marked as the section's.
+func TestUserSettingsRender(t *testing.T) {
+	testkit.UseEngineRoot(t)
+	testkit.WithModules(t, map[string]bool{manifest.Name: true})
+	on := testkit.RenderNamed(t, "user_settings_workflow", map[string]any{"moduleSettings": map[string]any{manifest.Name: userSettingsForm{Mail: true}}}, "partials/workflow_hooks.html")
+	if !strings.Contains(on, `name="workflow_user_settings" value="1"`) || !strings.Contains(on, `name="workflow_mail" value="1" checked`) {
+		t.Errorf("on: %s", on)
+	}
+	off := testkit.RenderNamed(t, "user_settings_workflow", map[string]any{"moduleSettings": map[string]any{manifest.Name: userSettingsForm{}}}, "partials/workflow_hooks.html")
+	if strings.Contains(off, "checked") {
+		t.Errorf("off: %s", off)
 	}
 }

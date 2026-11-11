@@ -120,6 +120,8 @@ type Workflow struct {
 	nodes modulekit.NodesRepository
 	auth  modulekit.AuthService
 	now   func() time.Time
+	// mail - a transition's e-mails (nil - none: tests).
+	mail *mailer
 
 	mu  sync.Mutex
 	cfg *Config
@@ -236,7 +238,8 @@ func (w *Workflow) Allowed(ctx context.Context, user *modulekit.User, state stri
 
 // Make moves node from its state by t (by user, with comment): records
 // it, sets the node's publishing by the new state (in ctx's
-// transaction: the caller tracks the change).
+// transaction: the caller tracks the change), then sends its e-mails in
+// the background (mailer.later).
 func (w *Workflow) Make(ctx context.Context, node modulekit.Node, from State, t Transition, user *modulekit.User, comment string) error {
 	cfg, err := w.Config(ctx)
 	if err != nil {
@@ -257,7 +260,11 @@ func (w *Workflow) Make(ctx context.Context, node modulekit.Node, from State, t 
 	if err := w.repo.AddHistory(ctx, HistoryEntry{Nid: node.ID, From: from.Name, To: to.Name, UID: uid, Comment: comment, At: now}); err != nil {
 		return err
 	}
-	return w.publish(ctx, node.ID, to)
+	if err := w.publish(ctx, node.ID, to); err != nil {
+		return err
+	}
+	w.mail.later(cfg, transition{Node: node, By: uid, Action: t.Label, To: to, Comment: comment})
+	return nil
 }
 
 // publish sets node nid's publishing by state: published or not, never
