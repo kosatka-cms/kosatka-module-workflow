@@ -157,21 +157,57 @@ func (r *Repo) History(ctx context.Context, nid, limit int) ([]HistoryEntry, err
 	return out, nil
 }
 
-// InState - the items in state, the longest waiting first, with how many
-// there are.
-func (r *Repo) InState(ctx context.Context, state string, limit, offset int) ([]NodeState, int, error) {
-	q := r.client(ctx).NodeState.Query().Where(nodestate.State(state))
-	total, err := q.Clone().Count(ctx)
-	if err != nil {
+// QueueItem - an item of the queue: its state and when its content was
+// last saved.
+type QueueItem struct {
+	NodeState
+	Updated time.Time
+}
+
+// queueOrder - the queue's sort columns (QueueSort.Key) as SQL: the
+// item's last save, its type's name, its author's name, its title.
+var queueOrder = map[string]string{
+	QueueSortUpdated: "n.updated_at",
+	QueueSortType:    "COALESCE(t.label, n.type)",
+	QueueSortAuthor:  "COALESCE(u.username, '')",
+	QueueSortTitle:   "n.title",
+}
+
+// InState - a page of the items in state in sort's order (an unknown key
+// - the last saved first), with how many there are.
+func (r *Repo) InState(ctx context.Context, state string, sort QueueSort, limit, offset int) ([]QueueItem, int, error) {
+	from := ` FROM workflow_node_states s JOIN nodes n ON n.id = s.nid
+		LEFT JOIN content_types t ON t.machine_name = n.type
+		LEFT JOIN users u ON u.id = n.created_by
+		WHERE s.state = ?`
+	var total int
+	if err := r.db.QueryRowContext(ctx, modulekit.Rebind("SELECT COUNT(*)"+from), state).Scan(&total); err != nil {
 		return nil, 0, fmt.Errorf("counting the items in %s: %w", state, err)
 	}
-	rows, err := q.Order(nodestate.ByChangedAt(), nodestate.ByID()).Limit(limit).Offset(offset).All(ctx)
+	col, ok := queueOrder[sort.Key]
+	if !ok {
+		col, sort.Desc = queueOrder[QueueSortUpdated], true
+	}
+	dir := " ASC"
+	if sort.Desc {
+		dir = " DESC"
+	}
+	rows, err := r.db.QueryContext(ctx, modulekit.Rebind("SELECT s.nid, s.state, s.changed_at, s.changed_by, n.updated_at"+from+
+		" ORDER BY "+col+dir+", s.id"+dir+" LIMIT ? OFFSET ?"), state, limit, offset)
 	if err != nil {
 		return nil, 0, fmt.Errorf("listing the items in %s: %w", state, err)
 	}
-	out := make([]NodeState, len(rows))
-	for i, row := range rows {
-		out[i] = NodeState{Nid: row.Nid, State: row.State, ChangedAt: row.ChangedAt, ChangedBy: row.ChangedBy}
+	defer func() { _ = rows.Close() }()
+	var out []QueueItem
+	for rows.Next() {
+		var it QueueItem
+		if err := rows.Scan(&it.Nid, &it.State, &it.ChangedAt, &it.ChangedBy, &it.Updated); err != nil {
+			return nil, 0, fmt.Errorf("listing the items in %s: %w", state, err)
+		}
+		out = append(out, it)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, 0, fmt.Errorf("listing the items in %s: %w", state, err)
 	}
 	return out, total, nil
 }

@@ -86,8 +86,9 @@ to fix), the form shows it over the fields.
 
 **Content → Editorial** (`/admin/content/workflow`) lists the items by
 state, a tab each with how many there are, opening on the first state
-neither initial nor on the site; the longest waiting first, with their
-type, author and since when. Each row has the transitions the user may
+neither initial nor on the site; the last saved first, with their type,
+author and last save. A column's header sorts the tab by it - the title,
+the type, the author, the last save - and again the other way. Each row has the transitions the user may
 make from that state: one that requires a comment opens a page for it,
 the others are made at once, without one. The number by the menu item is
 how many items wait for a transition of yours (in a state neither
