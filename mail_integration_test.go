@@ -157,7 +157,9 @@ func TestTransitionMail(t *testing.T) {
 
 // TestWaitingMailFullAccess - no role named in the transitions from the
 // state (but every signed-in user's): an item sent there the first time
-// is told to the users of the roles with full access.
+// is told to the users of the roles with full access; one an editor with
+// full access moved on (approved) is in their hands - the others aren't
+// told.
 func TestWaitingMailFullAccess(t *testing.T) {
 	testkit.SchemaDB(t, func(t *testing.T, db testkit.DB) {
 		ctx := context.Background()
@@ -165,7 +167,7 @@ func TestWaitingMailFullAccess(t *testing.T) {
 			`INSERT INTO roles (id, name, created_at, updated_at) VALUES (13, 'writer', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP), (14, 'chief', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
 			`INSERT INTO users (id, username, slug, password_hash, email, status, role_id) VALUES
 				(1, 'anna', 'users/anna', '', 'anna@example.com', 1, 13), (4, 'ivan', 'users/ivan', '', 'ivan@example.com', 1, 13),
-				(5, 'boris', 'users/boris', '', 'boris@example.com', 1, 14)`,
+				(5, 'boris', 'users/boris', '', 'boris@example.com', 1, 14), (7, 'root', 'users/root', '', 'root@example.com', 1, 14)`,
 			`INSERT INTO content_types (id, machine_name, label, created_by, created_at, updated_at) VALUES (1, 'article', 'Article', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`,
 			`INSERT INTO nodes (id, type, title, slug, created_by, status) VALUES (5, 'article', 'Harbour festival', 'news/harbour', 1, 0)`,
 		} {
@@ -175,21 +177,40 @@ func TestWaitingMailFullAccess(t *testing.T) {
 		}
 		d := testkit.Deps(db)
 		mail := &fakeMail{}
+		repo := NewRepo(db.DB)
 		roles := fakeRoles{{ID: 13, Name: "writer"}, {ID: 14, Name: "chief", Permissions: map[string]any{modulekit.PermFullAccess: true}}}
-		m := &mailer{repo: NewRepo(db.DB), nodes: d.NodeRepo, users: d.Users, roles: roles,
+		m := &mailer{repo: repo, nodes: d.NodeRepo, users: d.Users, roles: roles, auth: fullAuth{},
 			site: fakeSite{}, types: d.ContentTypes, mail: mail, baseURL: func() string { return "https://example.com" }}
 		review := State{Name: "review", Label: "In review"}
-		cfg := Config{Types: []string{"article"}, States: []State{{Name: "draft", Label: "Draft", Initial: true}, review},
+		approved := State{Name: "approved", Label: "Approved"}
+		cfg := Config{Types: []string{"article"}, States: []State{{Name: "draft", Label: "Draft", Initial: true}, review, approved},
 			Transitions: []Transition{
 				{From: []string{"draft"}, To: "review", Label: "Send to review", Roles: []string{modulekit.RoleUser}},
 				{From: []string{"review"}, To: "draft", Label: "Return to the author", Roles: []string{modulekit.RoleUser}},
 				{From: []string{"review"}, To: "approved", Label: "Approve"},
+				{From: []string{"approved"}, To: "published", Label: "Publish"},
 			}}
-		if err := m.send(ctx, cfg, transition{Node: modulekit.Node{ID: 5}, By: 1, Action: "Send to review", To: review}); err != nil {
-			t.Fatal(err)
+		// move - a transition of node 5 as Workflow.Make records it, then its e-mails.
+		move := func(by int, from string, to State, action string) []string {
+			t.Helper()
+			mail.sent = nil
+			if err := repo.AddHistory(ctx, HistoryEntry{Nid: 5, From: from, To: to.Name, UID: by, At: time.Now()}); err != nil {
+				t.Fatal(err)
+			}
+			if err := m.send(ctx, cfg, transition{Node: modulekit.Node{ID: 5}, By: by, Action: action, To: to}); err != nil {
+				t.Fatal(err)
+			}
+			var out []string
+			for _, s := range mail.sent {
+				out = append(out, s.key+" "+s.to)
+			}
+			return out
 		}
-		if len(mail.sent) != 1 || mail.sent[0].key != MailWaiting || mail.sent[0].to != "boris@example.com" {
-			t.Errorf("sent to review: %+v", mail.sent)
+		if got := move(1, "draft", review, "Send to review"); !slices.Equal(got, []string{MailWaiting + " boris@example.com", MailWaiting + " root@example.com"}) {
+			t.Errorf("sent to review: %v", got)
+		}
+		if got := move(7, "review", approved, "Approve"); !slices.Equal(got, []string{MailAuthor + " anna@example.com"}) {
+			t.Errorf("approved by an editor who may publish: %v", got)
 		}
 	})
 }

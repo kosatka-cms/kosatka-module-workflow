@@ -150,7 +150,10 @@ A transition sends two e-mails (from Kosatka 0.1.11):
   again, the other editors don't. The first time, with no such editor, it
   goes to the users of the roles named in the transitions from that state
   (not to every signed-in user: a transition given to that role doesn't
-  count); with none named, to who has full access.
+  count); with none named, to who has full access - unless an editor
+  who may take the next step moved it there (approved it after talking
+  to the author): then the item is in their hands, and nobody else is
+  told.
 
 Neither goes to who made the transition, and the author gets only the
 first one. Their texts are on the engine's **Configuration → Mail**

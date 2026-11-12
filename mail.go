@@ -55,7 +55,7 @@ func mailDefs() []modulekit.MailDef {
 		{
 			Key: MailWaiting, Module: manifest.Name, Weight: 11, Optional: true, Placeholders: placeholders, Sample: sample,
 			Label:       i18n.N("An item waits for you in the editorial workflow"),
-			Description: i18n.N("An item came to a state neither initial nor on the site (in review, approved): to who moved it before and may take the next step; the first time, to the roles of the transitions from that state, none named - to who has full access. A user may turn it off in their profile."),
+			Description: i18n.N("An item came to a state neither initial nor on the site (in review, approved): to who moved it before and may take the next step; the first time, to the roles of the transitions from that state, none named - to who has full access, unless an editor who may take the next step moved it there (it is in their hands). A user may turn it off in their profile."),
 			Recipient:   i18n.N("to its editors, the first time to the roles of the next step"),
 			Default: modulekit.MailTemplate{
 				Subject: i18n.N("\"[workflow:title]\" waits: [workflow:to]"),
@@ -207,8 +207,11 @@ func (m *mailer) recipients(ctx context.Context, cfg Config, t transition) (*mod
 // make one from that state now (the editor who returned it, when the
 // author sends it again); none such - the item comes for the first time -
 // the users of the roles named in the transitions from it (nextRoles),
-// none named - of the roles with full access. Never who made t, nor the
-// author (they have their own e-mail); active users only.
+// none named - of the roles with full access, unless who made t isn't
+// the author and may make the next step: the item is in that editor's
+// hands (they approved it after talking to the author), nobody else's to
+// hear of. Never who made t, nor the author (they have their own
+// e-mail); active users only.
 func (m *mailer) waitingFor(ctx context.Context, cfg Config, t transition) ([]modulekit.User, error) {
 	if t.To.Initial || t.To.Published {
 		return nil, nil
@@ -220,6 +223,12 @@ func (m *mailer) waitingFor(ctx context.Context, cfg Config, t transition) ([]mo
 		return editors, err
 	}
 	roleNames := nextRoles(cfg, t.To)
+	if len(roleNames) == 0 && t.By > 0 && t.By != authorID {
+		took, err := m.mayMove(ctx, cfg, t.By, t.To)
+		if err != nil || took {
+			return nil, err
+		}
+	}
 	roles, err := m.roles.Roles(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("loading the roles: %w", err)
@@ -260,16 +269,32 @@ func (m *mailer) editors(ctx context.Context, cfg Config, t transition, skip fun
 	slices.Sort(ids)
 	var out []modulekit.User
 	for _, id := range ids {
-		u, ok := users[id]
-		if !ok || u.Status != modulekit.UserStatusActive {
-			continue
-		}
-		full := m.auth != nil && m.auth.HasPermission(ctx, &u, modulekit.PermFullAccess)
-		if len(cfg.allowedFrom(t.To.Name, modulekit.UserRoleNames(&u), full)) > 0 {
+		if u, ok := users[id]; ok && m.allowed(ctx, cfg, &u, t.To) {
 			out = append(out, u)
 		}
 	}
 	return out, nil
+}
+
+// mayMove - the user uid is active and may make a transition from state.
+func (m *mailer) mayMove(ctx context.Context, cfg Config, uid int, state State) (bool, error) {
+	u, err := m.users.ByID(ctx, uid)
+	if modulekit.IsNotFound(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, fmt.Errorf("loading who made the transition: %w", err)
+	}
+	return m.allowed(ctx, cfg, u, state), nil
+}
+
+// allowed - u is active and may make a transition from state.
+func (m *mailer) allowed(ctx context.Context, cfg Config, u *modulekit.User, state State) bool {
+	if u == nil || u.Status != modulekit.UserStatusActive {
+		return false
+	}
+	full := m.auth != nil && m.auth.HasPermission(ctx, u, modulekit.PermFullAccess)
+	return len(cfg.allowedFrom(state.Name, modulekit.UserRoleNames(u), full)) > 0
 }
 
 // nextRoles - the roles to tell an item came to state: those named in
