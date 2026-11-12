@@ -1,9 +1,9 @@
 {{/* admin/workflow_queue.html - the editorial queue (Controller.Queue):
      a tab per state with its items' count, the items in the current one -
      the last saved first, or by the column whose header was clicked
-     (.sortURLs, .sort, .order) - with their type, author and last save,
-     and the transitions the user may make from it (one asking for a
-     comment opens its page). */}}
+     (.sortURLs, .sort, .order) - with their type, author (a link to
+     their profile) and last save, and the transitions the user may make
+     from it (one asking for a comment opens its page). */}}
 {{template "layout.html" .}}
 
 {{define "page_body"}}{{template "content" .}}{{end}}
@@ -29,7 +29,7 @@
                 <tr>
                     <td><a href="{{.Node.URL}}" class="admin-table-title">{{.Node.Title}}</a><span class="admin-table-sub"><a href="/node/{{.Node.ID}}/edit">{{t "Edit"}}</a>{{with .EditedBy}} · <span class="workflow-edited-by">{{t "Being edited by @name" "@name" .}}</span>{{end}}</span></td>
                     <td>{{.TypeLabel}}</td>
-                    <td>{{.Author}}</td>
+                    <td>{{with .Author}}<a href="{{userURL .Slug}}">{{.Username}}</a>{{else}}-{{end}}</td>
                     <td class="text-nowrap">{{if not .Updated.IsZero}}{{date .Updated "datetime"}}{{end}}</td>
                     <td class="text-end text-nowrap">
                         {{range .Transitions}}

@@ -309,9 +309,10 @@ func settingsFromForm(form url.Values) (Config, string) {
 // queueRow - an item of the queue: its node, author, since when in its
 // state, the transitions the user may make.
 type queueRow struct {
-	Node        modulekit.Node
-	TypeLabel   string
-	Author      string
+	Node      modulekit.Node
+	TypeLabel string
+	// Author - the item's author, linked to their profile (nil - gone).
+	Author      *modulekit.User
 	Updated     time.Time
 	Transitions []Transition
 	// EditedBy - who has its form open now ("" - nobody).
@@ -415,14 +416,11 @@ func (c *Controller) queueRows(ctx context.Context, items []QueueItem, labels ma
 	for _, l := range locks {
 		userIDs = append(userIDs, l.UID)
 	}
-	names := map[int]string{}
+	people := map[int]modulekit.User{}
 	if c.users != nil {
-		people, err := c.users.ByIDs(ctx, userIDs)
-		if err != nil {
+		var err error
+		if people, err = c.users.ByIDs(ctx, userIDs); err != nil {
 			return nil, err
-		}
-		for id, u := range people {
-			names[id] = u.Username
 		}
 	}
 	var rows []queueRow
@@ -431,9 +429,12 @@ func (c *Controller) queueRows(ctx context.Context, items []QueueItem, labels ma
 		if !ok {
 			continue
 		}
-		row := queueRow{Node: node, TypeLabel: labels[string(node.Type)], Author: names[node.CreatedBy.ID], Updated: it.Updated, Transitions: allowed}
+		row := queueRow{Node: node, TypeLabel: labels[string(node.Type)], Updated: it.Updated, Transitions: allowed}
+		if u, ok := people[node.CreatedBy.ID]; ok {
+			row.Author = &u
+		}
 		if l, ok := locks[it.Nid]; ok {
-			row.EditedBy = names[l.UID]
+			row.EditedBy = people[l.UID].Username
 		}
 		rows = append(rows, row)
 	}
