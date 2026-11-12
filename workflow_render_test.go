@@ -180,12 +180,12 @@ func TestQueuePage(t *testing.T) {
 	data := map[string]any{"state": "review", "pagination": pagination.New(1, 1, queuePerPage, manifest.QueuePath, nil),
 		"sort": QueueSortUpdated, "order": "desc", "sortURLs": sortURLs,
 		"tabs": []stateTab{{State: State{Name: "draft", Label: "Draft"}, Count: 3}, {State: State{Name: "review", Label: "In review", Color: "amber"}, Count: 1, Current: true}},
-		"rows": []queueRow{{Node: node, TypeLabel: "Article", Author: "petr", Updated: time.Date(2026, 10, 30, 9, 15, 0, 0, time.UTC),
+		"rows": []queueRow{{Node: node, TypeLabel: "Article", Author: &modulekit.User{ID: 8, Username: "petr", Slug: "users/petr"}, Updated: time.Date(2026, 10, 30, 9, 15, 0, 0, time.UTC),
 			Transitions: []Transition{{ID: 2, Label: "Return to the author", Comment: "required"}, {ID: 3, Label: "Approve", Comment: "optional"}}, EditedBy: "anna"}}}
 	out := testkit.RenderPageContent(t, "admin/workflow_queue.html", data)
 	for _, want := range []string{
 		`href="/admin/content/workflow?state=review" aria-current="page"`, `In review · 1`, `Draft · 3`,
-		`<a href="/news/harbour" class="admin-table-title">Harbour festival</a>`, `<td>Article</td>`, `<td>petr</td>`,
+		`<a href="/news/harbour" class="admin-table-title">Harbour festival</a>`, `<td>Article</td>`, `<td><a href="/users/petr">petr</a></td>`,
 		`<a href="/admin/content/workflow/5/2" class="btn btn-sm btn-outline-secondary">Return to the author</a>`,
 		`action="/admin/content/workflow/5/3"`, `name="back" value="/admin/content/workflow?state=review&amp;sort=updated&amp;order=desc"`,
 		`<a href="/admin/content/workflow?order=asc&amp;sort=updated&amp;state=review">Updated</a> ↓`,

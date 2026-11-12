@@ -34,7 +34,7 @@ func TestQueueRows(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(rows) != 2 || rows[0].Node.Title != "Night market" || rows[0].Author != "oleg" || rows[1].Author != "marta" || rows[1].TypeLabel != "Article" || rows[1].Node.URL() != "/news/harbour" {
+		if len(rows) != 2 || rows[0].Node.Title != "Night market" || rows[0].Author == nil || rows[0].Author.Username != "oleg" || rows[1].Author == nil || rows[1].Author.Username != "marta" || rows[1].TypeLabel != "Article" || rows[1].Node.URL() != "/news/harbour" {
 			t.Errorf("rows: %+v", rows)
 		}
 	})
